@@ -1,13 +1,19 @@
 import SwiftUI
 
-/// One-bit palette: ink on paper, swapped in dark mode.
-enum Palette {
-    static let ink = Color.primary
-    static let paper = Color(uiColor: .systemBackground)
+/// Two colours: ink drawn on paper.
+struct OneBitPalette: Sendable {
+    let ink: Color
+    let paper: Color
+
+    /// The classic look: system ink on system paper, so the two swap in dark mode.
+    static let classic = OneBitPalette(
+        ink: Color.primary, paper: Color(uiColor: .systemBackground))
 }
 
 /// A boxy clanker: antenna, visor head, square body, tread base.
 struct RobotGlyph: View {
+    let palette: OneBitPalette
+
     var body: some View {
         Canvas { context, size in
             let width = size.width
@@ -15,8 +21,8 @@ struct RobotGlyph: View {
             func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
                 CGRect(x: x * width, y: y * height, width: w * width, height: h * height)
             }
-            let ink = GraphicsContext.Shading.color(Palette.ink)
-            let paper = GraphicsContext.Shading.color(Palette.paper)
+            let ink = GraphicsContext.Shading.color(palette.ink)
+            let paper = GraphicsContext.Shading.color(palette.paper)
 
             // Antenna
             context.fill(Path(rect(0.47, 0.04, 0.06, 0.16)), with: ink)
@@ -45,12 +51,14 @@ struct RobotGlyph: View {
 
 /// A pile of scrap: a mound with a loose gear and a bent rod.
 struct HeapGlyph: View {
+    let palette: OneBitPalette
+
     var body: some View {
         Canvas { context, size in
             let width = size.width
             let height = size.height
-            let ink = GraphicsContext.Shading.color(Palette.ink)
-            let paper = GraphicsContext.Shading.color(Palette.paper)
+            let ink = GraphicsContext.Shading.color(palette.ink)
+            let paper = GraphicsContext.Shading.color(palette.paper)
 
             var mound = Path()
             mound.move(to: CGPoint(x: 0.04 * width, y: 0.94 * height))
@@ -106,12 +114,14 @@ struct HeapGlyph: View {
 
 /// The player: an outlined figure in a long coat, hollow so it never reads as a robot.
 struct PlayerGlyph: View {
+    let palette: OneBitPalette
+
     var body: some View {
         Canvas { context, size in
             let width = size.width
             let height = size.height
-            let ink = GraphicsContext.Shading.color(Palette.ink)
-            let paper = GraphicsContext.Shading.color(Palette.paper)
+            let ink = GraphicsContext.Shading.color(palette.ink)
+            let paper = GraphicsContext.Shading.color(palette.paper)
             let line = max(1.5, 0.07 * width)
 
             let head = Path(ellipseIn: CGRect(

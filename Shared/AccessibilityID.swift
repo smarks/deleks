@@ -13,8 +13,14 @@ enum AccessibilityID {
     static let lastStandButton = "lastStand"
     static let newGameButton = "newGame"
     static let hintsToggle = "hints"
+    static let styleToggle = "styleToggle"
     static let resultCard = "resultCard"
     static let resultActionButton = "resultAction"
+}
+
+/// Text the app shows that its UI tests look for by name.
+enum DisplayText {
+    static let gameTitle = "deleks"
 }
 
 enum LaunchArgument {
@@ -22,7 +28,20 @@ enum LaunchArgument {
     static let seedKey = "deleksSeed"
 }
 
-/// UserDefaults keys. Also usable as launch arguments (`-showHints NO`).
+/// UserDefaults keys. Also usable as launch arguments (`-showHints NO`,
+/// `-appearanceStyle modern`). A launch argument outranks the saved value for the whole
+/// run, so a setting passed that way cannot be changed from inside the app.
 enum StorageKey {
     static let showHints = "showHints"
+    static let appearanceStyle = "appearanceStyle"
+}
+
+/// The look the game is drawn in. Stored under `StorageKey.appearanceStyle` by raw value.
+/// Declared here so the UI tests launch each style by the same names the app reads.
+enum AppearanceStyle: String, CaseIterable {
+    case legacy
+    case modern
+
+    /// The style the game is in until the player chooses one.
+    static let initial = AppearanceStyle.legacy
 }
