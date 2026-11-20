@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ClankersCore
+@testable import deleksCore
 
 private let smallRules = GameRules(width: 9, height: 9)
 

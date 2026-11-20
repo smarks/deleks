@@ -1,7 +1,7 @@
 import XCTest
 
 /// Drives the real app with a fixed seed so every run sees the same board.
-final class ClankersUITests: XCTestCase {
+final class deleksUITests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {

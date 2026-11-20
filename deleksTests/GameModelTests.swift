@@ -1,8 +1,8 @@
-import ClankersCore
+import deleksCore
 import Foundation
 import Testing
 
-@testable import Clankers
+@testable import deleks
 
 @MainActor
 @Suite("Game model")

@@ -1,4 +1,4 @@
-import ClankersCore
+import deleksCore
 import SwiftUI
 
 /// The playing field. Tap a cell to step one square toward it; tap yourself to wait.

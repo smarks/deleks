@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ClankersApp: App {
+struct deleksApp: App {
     @State private var model = GameModel(fixedSeed: GameModel.seedFromLaunchArguments())
 
     var body: some Scene {

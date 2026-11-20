@@ -1,4 +1,4 @@
-name: Clankers
+name: deleks
 options:
   bundleIdPrefix: com.origamisoftware
   deploymentTarget:
@@ -12,21 +12,21 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: NJ55UC9QDK
 packages:
-  ClankersCore:
-    path: ClankersCore
+  deleksCore:
+    path: deleksCore
 targets:
-  Clankers:
+  deleks:
     type: application
     platform: iOS
     sources:
-      - Clankers
+      - deleks
       - Shared
     dependencies:
-      - package: ClankersCore
+      - package: deleksCore
     info:
-      path: Clankers/Info.plist
+      path: deleks/Info.plist
       properties:
-        CFBundleDisplayName: Clankers
+        CFBundleDisplayName: deleks
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         CADisableMinimumFrameDurationOnPhone: true
@@ -45,39 +45,39 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-  ClankersTests:
+  deleksTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - ClankersTests
+      - deleksTests
     dependencies:
-      - target: Clankers
-      - package: ClankersCore
+      - target: deleks
+      - package: deleksCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.tests
-  ClankersUITests:
+  deleksUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - ClankersUITests
+      - deleksUITests
       - Shared
     dependencies:
-      - target: Clankers
+      - target: deleks
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.uitests
 schemes:
-  Clankers:
+  deleks:
     build:
       targets:
-        Clankers: all
-        ClankersTests: [test]
-        ClankersUITests: [test]
+        deleks: all
+        deleksTests: [test]
+        deleksUITests: [test]
     test:
       targets:
-        - ClankersTests
-        - ClankersUITests
-        - package: ClankersCore/ClankersCoreTests
+        - deleksTests
+        - deleksUITests
+        - package: deleksCore/deleksCoreTests

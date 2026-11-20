@@ -27,14 +27,14 @@ git fetch --quiet origin main
     refuse "Local main differs from origin/main; pull or push first."
 
 build_number=$(git rev-list --count HEAD)
-archive_path="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)/Clankers $build_number.xcarchive"
+archive_path="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)/deleks $build_number.xcarchive"
 mkdir -p "$(dirname "$archive_path")"
 export_directory=$(mktemp -d)
 trap 'rm -rf "$export_directory"' EXIT
 
 echo "Uploading $(git rev-parse --short HEAD) as build $build_number"
 xcodegen generate
-xcodebuild -project Clankers.xcodeproj -scheme Clankers -configuration Release \
+xcodebuild -project deleks.xcodeproj -scheme deleks -configuration Release \
     -destination 'generic/platform=iOS' -archivePath "$archive_path" \
     -allowProvisioningUpdates CURRENT_PROJECT_VERSION="$build_number" archive
 xcodebuild -exportArchive -archivePath "$archive_path" \

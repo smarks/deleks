@@ -1,4 +1,4 @@
-# Clankers
+# deleks
 
 A turn-based robot-chase game for iPhone and iPad, in the one-bit style of an old
 desktop accessory. It belongs to the genre of the classic Unix `robots` game.
@@ -21,11 +21,11 @@ and T, P and L trigger the three actions.
 
 | Path | What it is |
 |------|------------|
-| `ClankersCore/` | The game engine as a Swift package: pure value types, no UI, seeded randomness. |
-| `Clankers/` | The SwiftUI app. |
+| `deleksCore/` | The game engine as a Swift package: pure value types, no UI, seeded randomness. |
+| `deleks/` | The SwiftUI app. |
 | `Shared/` | Accessibility identifiers compiled into both the app and the UI tests. |
-| `ClankersUITests/` | UI tests that drive the app with a fixed seed (`-ClankersSeed 42`). |
-| `tools/icon/DrawIcon.swift` | Renders the app icon: `swift tools/icon/DrawIcon.swift Clankers/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. |
+| `deleksUITests/` | UI tests that drive the app with a fixed seed (`-deleksSeed 42`). |
+| `tools/icon/DrawIcon.swift` | Renders the app icon: `swift tools/icon/DrawIcon.swift deleks/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. |
 | `tools/upload_testflight.sh` | Archives a clean `main` and uploads it to TestFlight; the build number is main's commit count. |
 
 ## Build and test
@@ -35,8 +35,8 @@ committed.
 
 ```bash
 xcodegen generate
-swift test --package-path ClankersCore
-xcodebuild test -scheme Clankers -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+swift test --package-path deleksCore
+xcodebuild test -scheme deleks -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 ```
 
 CI runs the engine tests on Linux on every push. The UI tests run locally.

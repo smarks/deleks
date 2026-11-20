@@ -1,4 +1,4 @@
-import ClankersCore
+import deleksCore
 import SwiftUI
 
 struct ContentView: View {
@@ -10,7 +10,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            TitleBar(title: "Clankers")
+            TitleBar(title: "deleks")
             Scoreboard(game: model.game, highScore: model.highScore)
 
             BoardView(game: model.game, showHints: showHints, onTap: model.tap(cell:), onMove: model.move)

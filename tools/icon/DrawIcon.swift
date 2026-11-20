@@ -1,4 +1,4 @@
-// Draws the Clankers app icon: a one-bit robot on a dotted paper grid.
+// Draws the deleks app icon: a one-bit robot on a dotted paper grid.
 // Usage: swift tools/icon/DrawIcon.swift <output.png>
 // The App Store wants a 1024x1024 PNG with no alpha channel; this writes exactly that.
 import CoreGraphics

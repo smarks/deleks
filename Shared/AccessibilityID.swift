@@ -18,8 +18,8 @@ enum AccessibilityID {
 }
 
 enum LaunchArgument {
-    /// `-ClankersSeed <number>` fixes the random seed so a run is repeatable.
-    static let seedKey = "ClankersSeed"
+    /// `-deleksSeed <number>` fixes the random seed so a run is repeatable.
+    static let seedKey = "deleksSeed"
 }
 
 /// UserDefaults keys. Also usable as launch arguments (`-showHints NO`).

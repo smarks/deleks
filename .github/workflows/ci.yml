@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   core:
-    name: ClankersCore on Linux
+    name: deleksCore on Linux
     runs-on: ubuntu-latest
     container: swift:6.1
     timeout-minutes: 15
@@ -17,4 +17,4 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Test the game engine
-        run: swift test --package-path ClankersCore
+        run: swift test --package-path deleksCore

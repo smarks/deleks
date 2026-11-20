@@ -1,9 +1,9 @@
-import ClankersCore
+import deleksCore
 import Foundation
 import Observation
 
 /// Owns the running game and turns taps into engine calls. All game rules live in
-/// `ClankersCore`; this type only sequences turns and remembers the high score.
+/// `deleksCore`; this type only sequences turns and remembers the high score.
 @MainActor
 @Observable
 final class GameModel {
