@@ -1,0 +1,83 @@
+name: Clankers
+options:
+  bundleIdPrefix: com.origamisoftware
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: NJ55UC9QDK
+packages:
+  ClankersCore:
+    path: ClankersCore
+targets:
+  Clankers:
+    type: application
+    platform: iOS
+    sources:
+      - Clankers
+      - Shared
+    dependencies:
+      - package: ClankersCore
+    info:
+      path: Clankers/Info.plist
+      properties:
+        CFBundleDisplayName: Clankers
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        CADisableMinimumFrameDurationOnPhone: true
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  ClankersTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - ClankersTests
+    dependencies:
+      - target: Clankers
+      - package: ClankersCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers.tests
+  ClankersUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - ClankersUITests
+      - Shared
+    dependencies:
+      - target: Clankers
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers.uitests
+schemes:
+  Clankers:
+    build:
+      targets:
+        Clankers: all
+        ClankersTests: [test]
+        ClankersUITests: [test]
+    test:
+      targets:
+        - ClankersTests
+        - ClankersUITests
+        - package: ClankersCore/ClankersCoreTests
