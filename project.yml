@@ -41,7 +41,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -56,7 +56,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.tests
   ClankersUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -68,7 +68,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.clankers.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.uitests
 schemes:
   Clankers:
     build:
