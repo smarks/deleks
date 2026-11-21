@@ -7,6 +7,7 @@ struct BoardView: View {
     let showHints: Bool
     let onTap: (Position) -> Void
     let onMove: (Direction) -> Void
+    @Environment(\.theme) private var theme
 
     var body: some View {
         GeometryReader { proxy in
@@ -18,23 +19,24 @@ struct BoardView: View {
                 height: cell * CGFloat(game.rules.height))
 
             ZStack(alignment: .topLeading) {
-                GridBackground(columns: game.rules.width, rows: game.rules.height, cell: cell)
+                theme.boardBackground(
+                    columns: game.rules.width, rows: game.rules.height, cellSize: cell
+                )
+                .accessibilityHidden(true)
 
                 if showHints && game.status == .playing {
                     ForEach(Direction.allCases.filter { $0 != .stay && game.isSafe($0) }, id: \.self) {
                         direction in
-                        Circle()
-                            .stroke(Palette.ink.opacity(0.45), lineWidth: 1.5)
-                            .frame(width: cell * 0.3, height: cell * 0.3)
+                        theme.safeMoveHint(cellSize: cell)
                             .position(center(of: game.player.moved(direction), cell: cell))
+                            .accessibilityHidden(true)
                     }
                 }
 
                 ForEach(game.heaps.sorted { ($0.y, $0.x) < ($1.y, $1.x) }, id: \.self) { heap in
-                    HeapGlyph()
-                        .frame(width: cell * 0.9, height: cell * 0.9)
+                    theme.heapGlyph(cellSize: cell)
                         .position(center(of: heap, cell: cell))
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(theme.heapTransition)
                         .accessibilityElement()
                         .accessibilityIdentifier(AccessibilityID.heap)
                         .accessibilityLabel("Scrap heap")
@@ -42,19 +44,16 @@ struct BoardView: View {
                 }
 
                 ForEach(game.robots) { robot in
-                    RobotGlyph()
-                        .frame(width: cell * 0.86, height: cell * 0.86)
+                    theme.robotGlyph(cellSize: cell)
                         .position(center(of: robot.position, cell: cell))
-                        .transition(.opacity)
+                        .transition(theme.robotTransition)
                         .accessibilityElement()
                         .accessibilityIdentifier(AccessibilityID.robot)
                         .accessibilityLabel("Robot")
                         .accessibilityValue(spoken(robot.position))
                 }
 
-                PlayerGlyph()
-                    .frame(width: cell * 0.8, height: cell * 0.8)
-                    .opacity(game.status == .caught ? 0.25 : 1)
+                theme.playerGlyph(cellSize: cell, isCaught: game.status == .caught)
                     .position(center(of: game.player, cell: cell))
                     .accessibilityElement()
                     .accessibilityIdentifier(AccessibilityID.player)
@@ -77,7 +76,7 @@ struct BoardView: View {
                     onTap(tapped)
                 }
             )
-            .overlay(Rectangle().stroke(Palette.ink, lineWidth: 2))
+            .overlay(theme.boardBorder().accessibilityHidden(true))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(AccessibilityID.board)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,28 +91,6 @@ struct BoardView: View {
 
     private func center(of position: Position, cell: CGFloat) -> CGPoint {
         CGPoint(x: (CGFloat(position.x) + 0.5) * cell, y: (CGFloat(position.y) + 0.5) * cell)
-    }
-}
-
-/// Paper with faint dots at every grid corner, like an old paint program.
-private struct GridBackground: View {
-    let columns: Int
-    let rows: Int
-    let cell: CGFloat
-
-    var body: some View {
-        Canvas { context, _ in
-            let dot = max(1, cell * 0.06)
-            for row in 1..<rows {
-                for column in 1..<columns {
-                    let corner = CGRect(
-                        x: CGFloat(column) * cell - dot / 2, y: CGFloat(row) * cell - dot / 2,
-                        width: dot, height: dot)
-                    context.fill(Path(corner), with: .color(Palette.ink.opacity(0.3)))
-                }
-            }
-        }
-        .background(Palette.paper)
     }
 }
 

@@ -4,27 +4,36 @@ import SwiftUI
 struct ContentView: View {
     let model: GameModel
     @AppStorage(StorageKey.showHints) private var showHints = false
+    @AppStorage(StorageKey.appearanceStyle) private var style: AppearanceStyle = .initial
     @FocusState private var boardFocused: Bool
 
-    private let turnAnimation = Animation.easeInOut(duration: 0.12)
-
     var body: some View {
+        let theme = style.theme
         VStack(spacing: 12) {
-            TitleBar(title: "deleks")
+            theme.titleBar(
+                title: AnyView(
+                    Text(verbatim: DisplayText.gameTitle).accessibilityAddTraits(.isHeader)))
             Scoreboard(game: model.game, highScore: model.highScore)
 
             BoardView(game: model.game, showHints: showHints, onTap: model.tap(cell:), onMove: model.move)
             .id(model.gameGeneration)
             .overlay { resultCard }
-            .animation(turnAnimation, value: model.game.turn)
-            .animation(turnAnimation, value: model.game.level)
+            .animation(theme.turnAnimation, value: model.game.turn)
+            .animation(theme.turnAnimation, value: model.game.level)
 
-            Controls(model: model, showHints: $showHints)
+            // Never squeezed below its own height: at large text sizes the board gives
+            // up the room instead, so a button's title stays inside its border.
+            Controls(model: model, showHints: $showHints, modernLook: $style.isModern)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .background(Palette.paper.ignoresSafeArea())
-        .fontDesign(.monospaced)
-        .foregroundStyle(Palette.ink)
+        // Fill the window, so the background reaches every edge of the screen and not
+        // only the height of the content.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.screenBackground().ignoresSafeArea().accessibilityHidden(true))
+        .fontDesign(theme.fontDesign)
+        .foregroundStyle(theme.textStyle)
+        .environment(\.theme, theme)
         .sensoryFeedback(.impact(weight: .medium), trigger: model.scrapEvents)
         .sensoryFeedback(.error, trigger: model.game.status == .caught) { _, caught in caught }
         .focusable()
@@ -41,12 +50,14 @@ struct ContentView: View {
             EmptyView()
         case .levelCleared:
             ResultCard(
+                outcome: .cleared,
                 heading: "Level \(model.game.level) cleared",
                 detail: "Score \(model.game.score)",
                 actionTitle: "Next level"
             ) { model.nextLevel() }
         case .caught:
             ResultCard(
+                outcome: .caught,
                 heading: "Caught!",
                 detail: "Final score \(model.game.score) · level \(model.game.level)",
                 actionTitle: "New game"
@@ -77,146 +88,155 @@ struct ContentView: View {
     }
 }
 
-/// A striped title bar in the style of a classic desktop window.
-private struct TitleBar: View {
-    let title: String
-
-    var body: some View {
-        ZStack {
-            VStack(spacing: 2) {
-                ForEach(0..<6, id: \.self) { _ in
-                    Rectangle().fill(Palette.ink).frame(height: 1)
-                }
-            }
-            Text(title)
-                .font(.headline.weight(.bold))
-                .padding(.horizontal, 10)
-                .background(Palette.paper)
-                .accessibilityAddTraits(.isHeader)
-        }
-        .frame(height: 22)
-    }
-}
-
 private struct Scoreboard: View {
     let game: Game
     let highScore: Int
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        HStack {
-            stat("Level", game.level, id: AccessibilityID.level)
-            Spacer()
-            stat("Score", game.score, id: AccessibilityID.score)
-            Spacer()
-            stat("Best", highScore, id: nil)
-            Spacer()
-            stat("Robots", game.robots.count, id: AccessibilityID.robotsLeft)
-        }
-        .font(.subheadline)
+        theme.scoreboard(stats: [
+            stat(.level, "Level", game.level, id: AccessibilityID.level),
+            stat(.score, "Score", game.score, id: AccessibilityID.score),
+            stat(.best, "Best", highScore, id: nil),
+            stat(.robots, "Robots", game.robots.count, id: AccessibilityID.robotsLeft),
+        ])
     }
 
-    private func stat(_ label: LocalizedStringKey, _ value: Int, id: String?) -> some View {
-        VStack(spacing: 2) {
-            Text(label).font(.caption2).textCase(.uppercase)
-            Text("\(value)").font(.headline).monospacedDigit().contentTransition(.numericText())
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(id ?? "")
-        .accessibilityValue("\(value)")
+    /// Spoken as "Level, 1" whatever the theme draws for the stat.
+    private func stat(
+        _ role: StatRole, _ label: LocalizedStringKey, _ value: Int, id: String?
+    ) -> AnyView {
+        AnyView(
+            theme.scoreboardStat(role: role, label: label, value: value)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(Text(label)), \(value)")
+                .accessibilityIdentifier(id ?? "")
+                .accessibilityValue("\(value)"))
     }
 }
 
 private struct Controls: View {
     let model: GameModel
     @Binding var showHints: Bool
+    @Binding var modernLook: Bool
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                RetroButton(title: "Teleport", systemImage: "sparkles") {
+                actionButton(
+                    .teleport, "Teleport", systemImage: "sparkles",
+                    identifier: AccessibilityID.teleportButton
+                ) {
                     model.teleport()
                 }
-                .accessibilityIdentifier(AccessibilityID.teleportButton)
 
-                RetroButton(title: "Pulse ×\(model.game.pulsesLeft)", systemImage: "dot.radiowaves.left.and.right") {
+                actionButton(
+                    .pulse, "Pulse ×\(model.game.pulsesLeft)",
+                    spokenLabel: Text("Pulse, \(model.game.pulsesLeft) left"),
+                    systemImage: "dot.radiowaves.left.and.right",
+                    identifier: AccessibilityID.pulseButton
+                ) {
                     model.pulse()
                 }
                 .disabled(model.game.pulsesLeft == 0)
-                .accessibilityLabel("Pulse, \(model.game.pulsesLeft) left")
-                .accessibilityIdentifier(AccessibilityID.pulseButton)
 
-                RetroButton(title: "Last stand", systemImage: "hand.raised.fill") {
+                actionButton(
+                    .lastStand, "Last stand", systemImage: "hand.raised.fill",
+                    identifier: AccessibilityID.lastStandButton
+                ) {
                     model.lastStand()
                 }
-                .accessibilityIdentifier(AccessibilityID.lastStandButton)
             }
             .disabled(!model.acceptsInput)
 
-            HStack {
-                Toggle("Safe-move hints", isOn: $showHints)
-                    .toggleStyle(.button)
-                    .font(.caption)
-                    .accessibilityIdentifier(AccessibilityID.hintsToggle)
-                Spacer()
-                Button("New game") { model.newGame() }
-                    .font(.caption)
-                    .disabled(model.isRunningLastStand)
-                    .accessibilityIdentifier(AccessibilityID.newGameButton)
+            // One row where it fits. Larger text sizes and narrower screens drop
+            // "New game" to a second row, and at the largest sizes stack all three.
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    hintsToggle
+                    styleToggle
+                    Spacer()
+                    newGameButton
+                }
+                VStack(spacing: theme.settingRowSpacing) {
+                    HStack {
+                        hintsToggle
+                        styleToggle
+                        Spacer()
+                    }
+                    HStack {
+                        Spacer()
+                        newGameButton
+                    }
+                }
+                VStack(spacing: theme.settingRowSpacing) {
+                    hintsToggle
+                    styleToggle
+                    newGameButton
+                }
             }
-            .tint(Palette.ink)
         }
     }
-}
 
-/// A square-cornered, outlined button with a drop shadow, after old desktop buttons.
-private struct RetroButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-    @Environment(\.isEnabled) private var isEnabled
+    private var hintsToggle: some View {
+        settingToggle(
+            .safeMoveHints, "Safe-move hints", isOn: $showHints,
+            identifier: AccessibilityID.hintsToggle)
+    }
 
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: systemImage)
-                Text(title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .background(Palette.paper)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Palette.ink, lineWidth: 2))
-            .background(
-                RoundedRectangle(cornerRadius: 6).fill(Palette.ink).offset(x: 2, y: 2))
-            .opacity(isEnabled ? 1 : 0.35)
-        }
-        .buttonStyle(.plain)
+    private var styleToggle: some View {
+        settingToggle(
+            .modernLook, "Modern look", isOn: $modernLook,
+            identifier: AccessibilityID.styleToggle)
+    }
+
+    private var newGameButton: some View {
+        let title: LocalizedStringKey = "New game"
+        return theme.secondaryButton(title: title) { model.newGame() }
+            .disabled(model.isRunningLastStand)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(AccessibilityID.newGameButton)
+    }
+
+    /// An action button that is spoken as its title unless `spokenLabel` says otherwise.
+    private func actionButton(
+        _ role: ActionRole, _ title: String, spokenLabel: Text? = nil, systemImage: String,
+        identifier: String, action: @escaping () -> Void
+    ) -> some View {
+        theme.actionButton(role: role, title: title, systemImage: systemImage, action: action)
+            .accessibilityLabel(spokenLabel ?? Text(title))
+            .accessibilityIdentifier(identifier)
+    }
+
+    private func settingToggle(
+        _ role: SettingRole, _ title: LocalizedStringKey, isOn: Binding<Bool>, identifier: String
+    ) -> some View {
+        theme.settingToggle(role: role, title: title, isOn: isOn)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(identifier)
     }
 }
 
 /// Stays on the board until the player taps its button; never auto-dismisses.
 private struct ResultCard: View {
+    let outcome: LevelOutcome
     let heading: LocalizedStringKey
     let detail: LocalizedStringKey
     let actionTitle: LocalizedStringKey
     let action: () -> Void
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        VStack(spacing: 10) {
-            Text(heading).font(.title3.weight(.bold))
-            Text(detail).font(.subheadline)
-            Button(action: action) {
-                Text(actionTitle)
-                    .font(.headline)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Palette.ink, lineWidth: 2))
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier(AccessibilityID.resultActionButton)
-        }
-        .padding(20)
-        .background(Palette.paper)
-        .overlay(Rectangle().stroke(Palette.ink, lineWidth: 2))
-        .background(Rectangle().fill(Palette.ink).offset(x: 4, y: 4))
+        theme.resultCard(
+            outcome: outcome,
+            heading: AnyView(Text(heading)),
+            detail: AnyView(Text(detail)),
+            actionButton: AnyView(
+                theme.resultActionButton(outcome: outcome, title: actionTitle, action: action)
+                    .accessibilityLabel(actionTitle)
+                    .accessibilityIdentifier(AccessibilityID.resultActionButton))
+        )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.resultCard)
     }

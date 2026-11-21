@@ -1,7 +1,8 @@
 # deleks
 
-A turn-based robot-chase game for iPhone and iPad, in the one-bit style of an old
-desktop accessory. It belongs to the genre of the classic Unix `robots` game.
+A turn-based robot-chase game for iPhone and iPad. It belongs to the genre of the classic
+Unix `robots` game, and comes in two looks: the one-bit style of an old desktop accessory,
+and a modern, colorful one.
 
 ## How to play
 
@@ -13,6 +14,8 @@ desktop accessory. It belongs to the genre of the classic Unix `robots` game.
 - **Pulse** scraps every robot touching you. You get one per level, and unused pulses carry over.
 - **Last stand** holds still until the level ends. Robots scrapped this way score double.
 - **Safe-move hints** ring the squares no robot can reach next turn.
+- **Modern look** switches between the one-bit look and the modern one, which follows the
+  system's light or dark mode. The game itself is the same in both.
 
 On a hardware keyboard, the numeric keypad moves (7 8 9 / 4 5 6 / 1 2 3, with 5 to wait),
 and T, P and L trigger the three actions.
@@ -22,9 +25,9 @@ and T, P and L trigger the three actions.
 | Path | What it is |
 |------|------------|
 | `deleksCore/` | The game engine as a Swift package: pure value types, no UI, seeded randomness. |
-| `deleks/` | The SwiftUI app. |
-| `Shared/` | Accessibility identifiers compiled into both the app and the UI tests. |
-| `deleksUITests/` | UI tests that drive the app with a fixed seed (`-deleksSeed 42`). |
+| `deleks/` | The SwiftUI app. Each look is a `Theme` (`LegacyTheme.swift`, `ModernTheme.swift`); the views ask the current theme how to draw. |
+| `Shared/` | Accessibility identifiers, launch arguments and storage keys compiled into both the app and the UI tests. |
+| `deleksUITests/` | UI tests that drive the app with a fixed seed (`-deleksSeed 42`), in both looks. |
 | `tools/icon/DrawIcon.swift` | Renders the app icon: `swift tools/icon/DrawIcon.swift deleks/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. |
 | `tools/upload_testflight.sh` | Archives a clean `main` and uploads it to TestFlight; the build number is main's commit count. |
 

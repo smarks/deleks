@@ -1,38 +1,194 @@
+import UIKit
 import XCTest
 
-/// Drives the real app with a fixed seed so every run sees the same board.
-final class deleksUITests: XCTestCase {
-    private var app: XCUIApplication!
+/// Launches the real app with a fixed seed, so every run sees the same board, and holds
+/// the queries every UI test class shares.
+@MainActor
+class GameUITestCase: XCTestCase {
+    fileprivate var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    /// The look to launch in. Nil passes no style, which leaves the app on its saved
+    /// setting and free to change it: a launch argument would pin the style for the run.
+    var launchStyle: AppearanceStyle? { .legacy }
+
+    /// The async form of `setUp`, because it is the one XCTest runs on the main actor.
+    override func setUp() async throws {
         continueAfterFailure = false
+        launch(in: launchStyle)
+    }
+
+    /// Starts the app afresh in `style`, ending the run already going if there is one.
+    /// `textSize` is a UIKit content size category name; nil leaves the simulator's own.
+    fileprivate func launch(in style: AppearanceStyle?, textSize: String? = nil) {
         app = XCUIApplication()
         app.launchArguments = [
             "-\(LaunchArgument.seedKey)", "42", "-\(StorageKey.showHints)", "NO",
         ]
+        if let style {
+            app.launchArguments += ["-\(StorageKey.appearanceStyle)", style.rawValue]
+        }
+        if let textSize {
+            // The key UIKit reads the preferred text size from.
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize]
+        }
         app.launch()
     }
 
-    private var board: XCUIElement { app.otherElements[AccessibilityID.board] }
-    private var player: XCUIElement { app.descendants(matching: .any)[AccessibilityID.player] }
-    private var robots: XCUIElementQuery {
+    fileprivate var board: XCUIElement { app.otherElements[AccessibilityID.board] }
+    fileprivate var player: XCUIElement { app.descendants(matching: .any)[AccessibilityID.player] }
+    fileprivate var robots: XCUIElementQuery {
         app.descendants(matching: .any).matching(identifier: AccessibilityID.robot)
     }
 
-    private func value(of identifier: String) -> String {
-        app.descendants(matching: .any)[identifier].value as? String ?? ""
+    fileprivate var styleToggle: XCUIElement { app.switches[AccessibilityID.styleToggle] }
+
+    /// A switch reports "1" when on and "0" when off.
+    fileprivate var modernLookIsOn: Bool { styleToggle.value as? String == "1" }
+
+    fileprivate func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    /// Pictures of four surfaces every theme draws its own way, keyed by a name for
+    /// failure messages. Two styles that are really drawn differ in every one of them;
+    /// the toggle's own value cannot show that.
+    fileprivate func themedSurfaceCaptures() -> [String: Data] {
+        let surfaces = [
+            "title": app.staticTexts[DisplayText.gameTitle],
+            "level stat": element(AccessibilityID.level),
+            "board": board,
+            "teleport button": app.buttons[AccessibilityID.teleportButton],
+        ]
+        return surfaces.mapValues { $0.screenshot().pngRepresentation }
+    }
+
+    /// Names of the surfaces that look exactly alike in the two sets of captures.
+    fileprivate func surfacesDrawnAlike(
+        _ first: [String: Data], _ second: [String: Data]
+    ) -> [String] {
+        first.keys.filter { first[$0] == second[$0] }.sorted()
+    }
+
+    /// How many elements of `type` VoiceOver can land on. A button, a switch and a
+    /// combined text are each spoken as one thing, so whatever a theme draws inside one
+    /// (a symbol, the two halves of a stat) is not counted.
+    fileprivate func countReachable(_ type: XCUIElement.ElementType) throws -> Int {
+        let spokenAsOne: [XCUIElement.ElementType] = [.button, .switch, .staticText]
+        func count(in snapshot: any XCUIElementSnapshot) -> Int {
+            let own = snapshot.elementType == type ? 1 : 0
+            if spokenAsOne.contains(snapshot.elementType) {
+                return own
+            }
+            return own + snapshot.children.reduce(0) { $0 + count(in: $1) }
+        }
+        return count(in: try app.snapshot())
+    }
+
+    /// XCUITest has no public way to read an element's traits. Its snapshot carries them
+    /// under `traits`, as the bit mask UIKit uses; this fails rather than guesses if a
+    /// future Xcode stops answering that key.
+    fileprivate func traits(of element: XCUIElement) throws -> UIAccessibilityTraits {
+        let traitsKey = "traits"
+        let snapshot = try XCTUnwrap(try element.snapshot() as? NSObject)
+        let answersTraits = snapshot.responds(to: NSSelectorFromString(traitsKey))
+        let rawTraits = try XCTUnwrap(
+            answersTraits ? snapshot.value(forKey: traitsKey) as? UInt64 : nil,
+            "the element snapshot no longer exposes \(traitsKey)")
+        return UIAccessibilityTraits(rawValue: rawTraits)
+    }
+
+    fileprivate func value(of identifier: String) -> String {
+        element(identifier).value as? String ?? ""
     }
 
     /// Reads "column 7, row 9" back as one-based (column, row).
-    private func playerCell() throws -> (x: Int, y: Int) {
+    fileprivate func playerCell() throws -> (x: Int, y: Int) {
         let numbers = (player.value as? String ?? "")
             .split(whereSeparator: { !$0.isNumber })
             .compactMap { Int($0) }
         return try XCTUnwrap(numbers.count == 2 ? (numbers[0], numbers[1]) : nil)
     }
 
-    private func robotCells() -> [String] {
+    fileprivate func robotCells() -> [String] {
         robots.allElementsBoundByIndex.compactMap { $0.value as? String }.sorted()
+    }
+}
+
+/// The whole game, driven in the legacy look. `ModernStyleUITests` runs every test here
+/// again in the modern look, so both styles must keep the same accessibility surface.
+class deleksUITests: GameUITestCase {
+    /// Guards the two-style run itself: if the style argument stopped reaching the app,
+    /// or the chosen theme stopped reaching the views, `ModernStyleUITests` would quietly
+    /// test the legacy look twice. So this launches the other style as well and requires
+    /// the two to be drawn differently.
+    func testLaunchesInTheRequestedStyle() throws {
+        let launchStyle = try XCTUnwrap(launchStyle)
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertEqual(modernLookIsOn, launchStyle == .modern)
+        let drawnInLaunchStyle = themedSurfaceCaptures()
+
+        let otherStyle = try XCTUnwrap(AppearanceStyle.allCases.first { $0 != launchStyle })
+        launch(in: otherStyle)
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertEqual(modernLookIsOn, otherStyle == .modern)
+        XCTAssertEqual(
+            surfacesDrawnAlike(drawnInLaunchStyle, themedSurfaceCaptures()), [],
+            "\(launchStyle) and \(otherStyle) drew these surfaces the same")
+    }
+
+    /// What VoiceOver is told belongs to the views, not the theme, so it is the same in
+    /// every style: this runs again under `ModernStyleUITests`.
+    func testEverythingIsSpokenTheSameInEveryStyle() throws {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+
+        let title = app.staticTexts[DisplayText.gameTitle]
+        XCTAssertTrue(title.exists)
+        XCTAssertTrue(try traits(of: title).contains(.header))
+        // And the title alone: a reading that called everything a header proves nothing.
+        XCTAssertFalse(try traits(of: element(AccessibilityID.level)).contains(.header))
+
+        XCTAssertEqual(element(AccessibilityID.level).label, "Level, 1")
+        XCTAssertEqual(element(AccessibilityID.score).label, "Score, 0")
+        XCTAssertEqual(element(AccessibilityID.robotsLeft).label, "Robots, 8")
+        // The high score has no identifier and outlives a run, so match its label's start.
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Best, "))
+                .firstMatch.exists)
+
+        XCTAssertEqual(app.buttons[AccessibilityID.teleportButton].label, "Teleport")
+        XCTAssertEqual(app.buttons[AccessibilityID.pulseButton].label, "Pulse, 1 left")
+        XCTAssertEqual(app.buttons[AccessibilityID.lastStandButton].label, "Last stand")
+        XCTAssertEqual(app.buttons[AccessibilityID.newGameButton].label, "New game")
+        XCTAssertEqual(app.switches[AccessibilityID.hintsToggle].label, "Safe-move hints")
+        XCTAssertEqual(app.switches[AccessibilityID.hintsToggle].value as? String, "0")
+        XCTAssertEqual(styleToggle.label, "Modern look")
+
+        XCTAssertEqual(player.label, "You")
+        XCTAssertEqual(Set(robots.allElementsBoundByIndex.map(\.label)), ["Robot"])
+        // Whatever a theme draws for the board's background, hints and border is hidden:
+        // the only things in the board with a name or an identifier are its pieces.
+        let namedInBoard = board.descendants(matching: .any)
+            .matching(NSPredicate(format: "label != '' OR identifier != ''"))
+        XCTAssertEqual(namedInBoard.count, robots.count + 1)
+
+        // Nothing reaches VoiceOver that the views did not put there: the title and the
+        // four stats are the only texts it can land on, and there is no picture. A theme
+        // that adds a text or a picture of its own outside a button changes these counts;
+        // what it draws inside a button, a switch or a stat does not.
+        let textsAtLaunch = 1 + 4
+        XCTAssertEqual(try countReachable(.staticText), textsAtLaunch)
+        XCTAssertEqual(try countReachable(.image), 0)
+
+        app.buttons[AccessibilityID.lastStandButton].tap()
+        let cardButton = app.buttons[AccessibilityID.resultActionButton]
+        XCTAssertTrue(cardButton.waitForExistence(timeout: 15))
+        XCTAssertEqual(cardButton.label, "New game")
+        // Seed 42's opening board ends a last stand with the player caught, on no points.
+        XCTAssertTrue(app.staticTexts["Caught!"].exists)
+        XCTAssertTrue(app.staticTexts["Final score 0 · level 1"].exists)
+        // The card adds its heading and its detail, and no picture.
+        XCTAssertEqual(try countReachable(.staticText), textsAtLaunch + 2)
+        XCTAssertEqual(try countReachable(.image), 0)
     }
 
     func testLaunchShowsFirstLevel() {
@@ -102,6 +258,115 @@ final class deleksUITests: XCTestCase {
         XCTAssertEqual(value(of: AccessibilityID.level), "1")
         XCTAssertEqual(value(of: AccessibilityID.score), "0")
         XCTAssertNotEqual(robotCells(), firstBoard, "New game kept the old board")
+        XCTAssertEqual(robots.count, 8)
+    }
+}
+
+/// Every test in `deleksUITests`, run again in the modern look.
+final class ModernStyleUITests: deleksUITests {
+    override var launchStyle: AppearanceStyle? { .modern }
+
+    /// The modern pills are drawn shorter than a fingertip, so each takes touches a little
+    /// beyond its outline. That touch area is the frame the pill reports, and it must be
+    /// a full touch target tall; a tap at its top or bottom edge, outside the drawn
+    /// outline, still reaches the pill.
+    func testEveryPillOffersAFullTouchTarget() {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let smallestTouchTarget: CGFloat = 44
+        let newGamePill = app.buttons[AccessibilityID.newGameButton]
+        for pill in [app.switches[AccessibilityID.hintsToggle], styleToggle, newGamePill] {
+            XCTAssertGreaterThanOrEqual(pill.frame.height, smallestTouchTarget)
+        }
+
+        let justInsideTheTopAndBottomEdges: [CGFloat] = [0.03, 0.97]
+        for edge in justInsideTheTopAndBottomEdges {
+            let boardBefore = robotCells()
+            newGamePill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: edge)).tap()
+            XCTAssertNotEqual(
+                robotCells(), boardBefore,
+                "a tap \(edge) of the way down New game's touch area did nothing")
+        }
+    }
+}
+
+/// The layout at the largest text size the scoreboard still has to fit: accessibility
+/// extra large.
+final class LargeTextUITests: GameUITestCase {
+    private func boardWidth(in style: AppearanceStyle) -> CGFloat {
+        launch(in: style, textSize: "UICTContentSizeCategoryAccessibilityXL")
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        return board.frame.width
+    }
+
+    /// Large text must not cost the modern look its board: the controls stop growing
+    /// before they squeeze it smaller than the legacy look's at the same text size.
+    func testTheModernBoardIsNoSmallerThanTheLegacyBoardAtLargeText() {
+        let legacyWidth = boardWidth(in: .legacy)
+        let defaultTextWidth: CGFloat = {
+            launch(in: .legacy)
+            XCTAssertTrue(board.waitForExistence(timeout: 5))
+            return board.frame.width
+        }()
+        // The text size reached the app at all: the legacy board shrank to make room.
+        XCTAssertLessThan(legacyWidth, defaultTextWidth)
+        XCTAssertGreaterThanOrEqual(boardWidth(in: .modern), legacyWidth)
+    }
+
+    /// At this size the modern pills wrap onto more than one row. Each takes touches
+    /// beyond its outline, and the rows are spaced so that no two touch areas overlap.
+    func testWrappedModernPillsDoNotShareTouchArea() {
+        launch(in: .modern, textSize: "UICTContentSizeCategoryAccessibilityXL")
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let pills = [
+            app.switches[AccessibilityID.hintsToggle], styleToggle,
+            app.buttons[AccessibilityID.newGameButton],
+        ]
+        let rows = Set(pills.map { $0.frame.midY.rounded() })
+        XCTAssertGreaterThan(rows.count, 1, "the pills did not wrap, so this checks nothing")
+
+        // Frames that only meet at an edge may differ by a rounding error; shrink each by
+        // less than a point so only a real overlap counts.
+        let roundingAllowance: CGFloat = 0.25
+        let touchAreas = pills.map {
+            $0.frame.insetBy(dx: roundingAllowance, dy: roundingAllowance)
+        }
+        for first in touchAreas.indices {
+            for second in touchAreas.indices where second > first {
+                XCTAssertFalse(
+                    touchAreas[first].intersects(touchAreas[second]),
+                    "\(pills[first].identifier) and \(pills[second].identifier) overlap")
+            }
+        }
+    }
+}
+
+/// The "Modern look" toggle, switching the style while the game runs.
+final class AppearanceToggleUITests: GameUITestCase {
+    override var launchStyle: AppearanceStyle? { nil }
+
+    /// Starts from whichever style the last run saved, flips it and flips it back, so the
+    /// test passes from either state and leaves the saved setting as it found it. The
+    /// look is judged by pictures of the screen, not by the toggle's own value.
+    func testStyleToggleSwitchesTheLookAndBack() {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertTrue(styleToggle.exists)
+        let wasModern = modernLookIsOn
+        let drawnAtFirst = themedSurfaceCaptures()
+
+        styleToggle.tap()
+        XCTAssertEqual(modernLookIsOn, !wasModern)
+        XCTAssertEqual(
+            surfacesDrawnAlike(drawnAtFirst, themedSurfaceCaptures()), [],
+            "flipping the toggle left these surfaces looking the same")
+        XCTAssertTrue(player.exists)
+        XCTAssertEqual(robots.count, 8)
+
+        styleToggle.tap()
+        XCTAssertEqual(modernLookIsOn, wasModern)
+        XCTAssertEqual(
+            surfacesDrawnAlike(drawnAtFirst, themedSurfaceCaptures()), drawnAtFirst.keys.sorted(),
+            "flipping the toggle back did not restore every surface")
+        XCTAssertTrue(player.exists)
         XCTAssertEqual(robots.count, 8)
     }
 }
