@@ -17,13 +17,18 @@ protocol Theme: Sendable {
     var fontDesign: Font.Design { get }
     /// Default fill of text and symbols: a colour, a gradient or any other shape style.
     var textStyle: AnyShapeStyle { get }
+    /// The gap between rows of the settings controls when they wrap onto more than one.
+    var settingRowSpacing: CGFloat { get }
+
+    // Motion is asked for on the main actor, where a theme can read the Reduce Motion
+    // setting and move less when it is on.
 
     /// How the board moves from one turn or level to the next.
-    var turnAnimation: Animation { get }
+    @MainActor var turnAnimation: Animation { get }
     /// How a scrap heap arrives on the board.
-    var heapTransition: AnyTransition { get }
+    @MainActor var heapTransition: AnyTransition { get }
     /// How a robot leaves the board when it is scrapped.
-    var robotTransition: AnyTransition { get }
+    @MainActor var robotTransition: AnyTransition { get }
 
     /// Fills the screen behind everything, safe areas included.
     @MainActor func screenBackground() -> AnyView
@@ -113,7 +118,7 @@ extension AppearanceStyle {
     var theme: any Theme {
         switch self {
         case .legacy: LegacyTheme()
-        case .modern: LegacyTheme.modernPlaceholder
+        case .modern: ModernTheme()
         }
     }
 

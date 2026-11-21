@@ -18,13 +18,18 @@ class GameUITestCase: XCTestCase {
     }
 
     /// Starts the app afresh in `style`, ending the run already going if there is one.
-    fileprivate func launch(in style: AppearanceStyle?) {
+    /// `textSize` is a UIKit content size category name; nil leaves the simulator's own.
+    fileprivate func launch(in style: AppearanceStyle?, textSize: String? = nil) {
         app = XCUIApplication()
         app.launchArguments = [
             "-\(LaunchArgument.seedKey)", "42", "-\(StorageKey.showHints)", "NO",
         ]
         if let style {
             app.launchArguments += ["-\(StorageKey.appearanceStyle)", style.rawValue]
+        }
+        if let textSize {
+            // The key UIKit reads the preferred text size from.
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize]
         }
         app.launch()
     }
@@ -260,6 +265,79 @@ class deleksUITests: GameUITestCase {
 /// Every test in `deleksUITests`, run again in the modern look.
 final class ModernStyleUITests: deleksUITests {
     override var launchStyle: AppearanceStyle? { .modern }
+
+    /// The modern pills are drawn shorter than a fingertip, so each takes touches a little
+    /// beyond its outline. That touch area is the frame the pill reports, and it must be
+    /// a full touch target tall; a tap at its top or bottom edge, outside the drawn
+    /// outline, still reaches the pill.
+    func testEveryPillOffersAFullTouchTarget() {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let smallestTouchTarget: CGFloat = 44
+        let newGamePill = app.buttons[AccessibilityID.newGameButton]
+        for pill in [app.switches[AccessibilityID.hintsToggle], styleToggle, newGamePill] {
+            XCTAssertGreaterThanOrEqual(pill.frame.height, smallestTouchTarget)
+        }
+
+        let justInsideTheTopAndBottomEdges: [CGFloat] = [0.03, 0.97]
+        for edge in justInsideTheTopAndBottomEdges {
+            let boardBefore = robotCells()
+            newGamePill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: edge)).tap()
+            XCTAssertNotEqual(
+                robotCells(), boardBefore,
+                "a tap \(edge) of the way down New game's touch area did nothing")
+        }
+    }
+}
+
+/// The layout at the largest text size the scoreboard still has to fit: accessibility
+/// extra large.
+final class LargeTextUITests: GameUITestCase {
+    private func boardWidth(in style: AppearanceStyle) -> CGFloat {
+        launch(in: style, textSize: "UICTContentSizeCategoryAccessibilityXL")
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        return board.frame.width
+    }
+
+    /// Large text must not cost the modern look its board: the controls stop growing
+    /// before they squeeze it smaller than the legacy look's at the same text size.
+    func testTheModernBoardIsNoSmallerThanTheLegacyBoardAtLargeText() {
+        let legacyWidth = boardWidth(in: .legacy)
+        let defaultTextWidth: CGFloat = {
+            launch(in: .legacy)
+            XCTAssertTrue(board.waitForExistence(timeout: 5))
+            return board.frame.width
+        }()
+        // The text size reached the app at all: the legacy board shrank to make room.
+        XCTAssertLessThan(legacyWidth, defaultTextWidth)
+        XCTAssertGreaterThanOrEqual(boardWidth(in: .modern), legacyWidth)
+    }
+
+    /// At this size the modern pills wrap onto more than one row. Each takes touches
+    /// beyond its outline, and the rows are spaced so that no two touch areas overlap.
+    func testWrappedModernPillsDoNotShareTouchArea() {
+        launch(in: .modern, textSize: "UICTContentSizeCategoryAccessibilityXL")
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let pills = [
+            app.switches[AccessibilityID.hintsToggle], styleToggle,
+            app.buttons[AccessibilityID.newGameButton],
+        ]
+        let rows = Set(pills.map { $0.frame.midY.rounded() })
+        XCTAssertGreaterThan(rows.count, 1, "the pills did not wrap, so this checks nothing")
+
+        // Frames that only meet at an edge may differ by a rounding error; shrink each by
+        // less than a point so only a real overlap counts.
+        let roundingAllowance: CGFloat = 0.25
+        let touchAreas = pills.map {
+            $0.frame.insetBy(dx: roundingAllowance, dy: roundingAllowance)
+        }
+        for first in touchAreas.indices {
+            for second in touchAreas.indices where second > first {
+                XCTAssertFalse(
+                    touchAreas[first].intersects(touchAreas[second]),
+                    "\(pills[first].identifier) and \(pills[second].identifier) overlap")
+            }
+        }
+    }
 }
 
 /// The "Modern look" toggle, switching the style while the game runs.

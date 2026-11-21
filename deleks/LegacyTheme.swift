@@ -7,6 +7,7 @@ struct LegacyTheme: Theme {
 
     var fontDesign: Font.Design { .monospaced }
     var textStyle: AnyShapeStyle { AnyShapeStyle(palette.ink) }
+    var settingRowSpacing: CGFloat { 10 }
 
     var turnAnimation: Animation { .easeInOut(duration: 0.12) }
     var heapTransition: AnyTransition { .scale.combined(with: .opacity) }

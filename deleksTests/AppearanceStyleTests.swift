@@ -16,6 +16,11 @@ struct AppearanceStyleTests {
         #expect(StorageKey.appearanceStyle == "appearanceStyle")
     }
 
+    @Test func eachStyleIsDrawnByItsOwnTheme() {
+        #expect(AppearanceStyle.legacy.theme is LegacyTheme)
+        #expect(AppearanceStyle.modern.theme is ModernTheme)
+    }
+
     @Test func modernIsTheOnlyStyleTheToggleShowsAsOn() {
         #expect(AppearanceStyle.modern.isModern)
         #expect(!AppearanceStyle.legacy.isModern)

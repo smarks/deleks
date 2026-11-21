@@ -27,6 +27,9 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
+        // Fill the window, so the background reaches every edge of the screen and not
+        // only the height of the content.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.screenBackground().ignoresSafeArea().accessibilityHidden(true))
         .fontDesign(theme.fontDesign)
         .foregroundStyle(theme.textStyle)
@@ -156,7 +159,7 @@ private struct Controls: View {
                     Spacer()
                     newGameButton
                 }
-                VStack(spacing: 10) {
+                VStack(spacing: theme.settingRowSpacing) {
                     HStack {
                         hintsToggle
                         styleToggle
@@ -167,7 +170,7 @@ private struct Controls: View {
                         newGameButton
                     }
                 }
-                VStack(spacing: 10) {
+                VStack(spacing: theme.settingRowSpacing) {
                     hintsToggle
                     styleToggle
                     newGameButton
