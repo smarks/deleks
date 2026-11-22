@@ -95,13 +95,8 @@ struct ContentView: View {
     /// plus T, P and L for the three actions.
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard !showsAbout else { return .ignored }
-        let keypad: [Character: Direction] = [
-            "7": .northWest, "8": .north, "9": .northEast,
-            "4": .west, "5": .stay, "6": .east,
-            "1": .southWest, "2": .south, "3": .southEast,
-        ]
         guard let key = press.characters.lowercased().first else { return .ignored }
-        if let direction = keypad[key] {
+        if let direction = Keypad.directions[key] {
             model.move(direction)
             return .handled
         }
