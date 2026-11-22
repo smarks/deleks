@@ -32,6 +32,8 @@ and T, P and L trigger the three actions.
 | `Shared/` | Accessibility identifiers, launch arguments and storage keys compiled into both the app and the UI tests, and the About box's wording (`About.json`), bundled into both. |
 | `LICENSE` | The MIT License. Bundled into the app, which shows it in the About box. |
 | `deleksUITests/` | UI tests that drive the app with a fixed seed (`-deleksSeed 42`), in both looks. |
+| `deleksStoreScreenshots/` | Takes the App Store screenshots; its own scheme, not part of the test suite (see `docs/app-store/listing.md`). |
+| `docs/app-store/` | The App Store listing text and its screenshots. |
 | `tools/icon/DrawIcon.swift` | Renders the app icon: `swift tools/icon/DrawIcon.swift deleks/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. |
 | `tools/upload_testflight.sh` | Archives a clean `main` and uploads it to TestFlight; the build number is main's commit count. |
 

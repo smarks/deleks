@@ -45,6 +45,7 @@ enum LaunchArgument {
 enum StorageKey {
     static let showHints = "showHints"
     static let appearanceStyle = "appearanceStyle"
+    static let highScore = "highScore"
 }
 
 /// The look the game is drawn in. Stored under `StorageKey.appearanceStyle` by raw value.

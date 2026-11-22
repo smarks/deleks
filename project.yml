@@ -71,10 +71,26 @@ targets:
         buildPhase: resources
     dependencies:
       - target: deleks
+      # Shared/Keypad.swift names deleksCore's directions.
+      - package: deleksCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.uitests
+  deleksStoreScreenshots:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - deleksStoreScreenshots
+      - Shared
+    dependencies:
+      - target: deleks
+      # Plays the shots with the engine's own rules.
+      - package: deleksCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.origamisoftware.deleks.storescreenshots
 schemes:
   deleks:
     build:
@@ -87,3 +103,12 @@ schemes:
         - deleksTests
         - deleksUITests
         - package: deleksCore/deleksCoreTests
+  # Takes the App Store screenshots; not part of the test suite. See docs/app-store/listing.md.
+  deleksStoreScreenshots:
+    build:
+      targets:
+        deleks: all
+        deleksStoreScreenshots: [test]
+    test:
+      targets:
+        - deleksStoreScreenshots

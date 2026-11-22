@@ -66,11 +66,19 @@ stores only its own settings on the device (see `PRIVACY.md`).
 
 ## Screenshots
 
-App Store Connect requires two sets for an app that runs on iPhone and iPad: iPhone 6.9"
-(1320 × 2868, from an iPhone Pro Max simulator) and iPad 13" (2064 × 2752, from an iPad Pro
-13-inch simulator). Each set shows both looks: the opening board, a game in progress with
-scrap heaps and hints, a cleared level, and the About box. Capture with
-`xcrun simctl io <device> screenshot <file>` after setting the status bar to
-`xcrun simctl status_bar <device> override --time 9:41 --batteryState charged --batteryLevel 100`,
-and launch with `-deleksSeed 42` so the boards repeat. The images are kept in
-`docs/app-store/screenshots/`.
+App Store Connect needs two sets for an app that runs on iPhone and iPad: iPhone 6.9"
+(1320 × 2868) and iPad 13" (2064 × 2752). The `deleksStoreScreenshots` scheme takes both,
+playing seed 42 so the boards repeat. For each look it saves the opening board, a game in
+progress with scrap heaps, a cleared level and the About box. The sets are in
+`docs/app-store/screenshots/iphone-6.9/` and `docs/app-store/screenshots/ipad-13/`; upload
+them in file-name order.
+
+To retake them, on an iPhone Pro Max and an iPad Pro 13-inch simulator set to English, each
+with the app freshly installed. On iPad the run first switches the simulator's Multitasking
+setting to Full Screen Apps and leaves it there; the iPad status bar keeps showing the
+simulator's real date beside 9:41.
+
+```bash
+xcrun simctl status_bar <device> override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+TEST_RUNNER_SCREENSHOT_DIR=<folder> xcodebuild test -scheme deleksStoreScreenshots -destination 'platform=iOS Simulator,id=<device>'
+```

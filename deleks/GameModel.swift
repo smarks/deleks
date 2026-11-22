@@ -7,7 +7,6 @@ import Observation
 @MainActor
 @Observable
 final class GameModel {
-    private static let highScoreKey = "highScore"
     static let lastStandTurnDelay: Duration = .milliseconds(140)
 
     private(set) var game: Game
@@ -25,7 +24,7 @@ final class GameModel {
     init(fixedSeed: UInt64? = nil, defaults: UserDefaults = .standard) {
         self.fixedSeed = fixedSeed
         self.defaults = defaults
-        highScore = defaults.integer(forKey: Self.highScoreKey)
+        highScore = defaults.integer(forKey: StorageKey.highScore)
         game = Game(seed: fixedSeed ?? UInt64.random(in: .min ... .max))
     }
 
@@ -33,7 +32,7 @@ final class GameModel {
     init(game: Game, defaults: UserDefaults) {
         fixedSeed = nil
         self.defaults = defaults
-        highScore = defaults.integer(forKey: Self.highScoreKey)
+        highScore = defaults.integer(forKey: StorageKey.highScore)
         self.game = game
     }
 
@@ -115,7 +114,7 @@ final class GameModel {
         }
         if game.score > highScore {
             highScore = game.score
-            defaults.set(highScore, forKey: Self.highScoreKey)
+            defaults.set(highScore, forKey: StorageKey.highScore)
         }
     }
 }
