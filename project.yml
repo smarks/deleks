@@ -21,6 +21,9 @@ targets:
     sources:
       - deleks
       - Shared
+      # The About box shows the license from the repository's own file.
+      - path: LICENSE
+        buildPhase: resources
     dependencies:
       - package: deleksCore
     info:
@@ -63,6 +66,9 @@ targets:
     sources:
       - deleksUITests
       - Shared
+      # So the tests compare the About box with the same license the app bundles.
+      - path: LICENSE
+        buildPhase: resources
     dependencies:
       - target: deleks
     settings:

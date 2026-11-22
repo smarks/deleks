@@ -16,6 +16,17 @@ enum AccessibilityID {
     static let styleToggle = "styleToggle"
     static let resultCard = "resultCard"
     static let resultActionButton = "resultAction"
+    static let aboutButton = "about"
+    static let aboutBox = "aboutBox"
+    static let aboutVersion = "aboutVersion"
+    static let aboutCredit = "aboutCredit"
+    static let aboutCreditLink = "aboutCreditLink"
+    static let aboutLicenseSummary = "aboutLicenseSummary"
+    static let aboutLicense = "aboutLicense"
+    static let aboutLicenseText = "aboutLicenseText"
+    static let aboutSourceLink = "aboutSourceLink"
+    static let aboutHistory = "aboutHistory"
+    static let aboutDone = "aboutDone"
 }
 
 /// Text the app shows that its UI tests look for by name.

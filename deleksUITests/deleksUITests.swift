@@ -6,6 +6,8 @@ import XCTest
 @MainActor
 class GameUITestCase: XCTestCase {
     fileprivate var app: XCUIApplication!
+    /// What the About box should show, read from the same resources the app bundles.
+    fileprivate var about: AboutDetails!
 
     /// The look to launch in. Nil passes no style, which leaves the app on its saved
     /// setting and free to change it: a launch argument would pin the style for the run.
@@ -14,6 +16,9 @@ class GameUITestCase: XCTestCase {
     /// The async form of `setUp`, because it is the one XCTest runs on the main actor.
     override func setUp() async throws {
         continueAfterFailure = false
+        // The test bundle carries About.json and LICENSE too, and takes its version
+        // numbers from the same project settings as the app.
+        about = try AboutDetails.load(from: Bundle(for: GameUITestCase.self))
         launch(in: launchStyle)
     }
 
@@ -58,6 +63,7 @@ class GameUITestCase: XCTestCase {
             "level stat": element(AccessibilityID.level),
             "board": board,
             "teleport button": app.buttons[AccessibilityID.teleportButton],
+            "about button": app.buttons[AccessibilityID.aboutButton],
         ]
         return surfaces.mapValues { $0.screenshot().pngRepresentation }
     }
@@ -95,6 +101,26 @@ class GameUITestCase: XCTestCase {
             answersTraits ? snapshot.value(forKey: traitsKey) as? UInt64 : nil,
             "the element snapshot no longer exposes \(traitsKey)")
         return UIAccessibilityTraits(rawValue: rawTraits)
+    }
+
+    fileprivate var aboutButton: XCUIElement { app.buttons[AccessibilityID.aboutButton] }
+    fileprivate var aboutDone: XCUIElement { app.buttons[AccessibilityID.aboutDone] }
+
+    /// Opens the About box and returns its Done button, once it is on screen.
+    @discardableResult
+    fileprivate func openAbout() -> XCUIElement {
+        XCTAssertTrue(aboutButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(aboutDone.exists, "the About box was up before it was asked for")
+        aboutButton.tap()
+        XCTAssertTrue(aboutDone.waitForExistence(timeout: 5))
+        return aboutDone
+    }
+
+    /// Whether all of `element` is on screen. XCUITest's `isHittable` is no help over the
+    /// About box: it still lists the game behind the modal box and can report a button of
+    /// the game under the point it tests.
+    fileprivate func isOnScreen(_ element: XCUIElement) -> Bool {
+        app.windows.firstMatch.frame.contains(element.frame)
     }
 
     fileprivate func value(of identifier: String) -> String {
@@ -162,6 +188,7 @@ class deleksUITests: GameUITestCase {
         XCTAssertEqual(app.switches[AccessibilityID.hintsToggle].label, "Safe-move hints")
         XCTAssertEqual(app.switches[AccessibilityID.hintsToggle].value as? String, "0")
         XCTAssertEqual(styleToggle.label, "Modern look")
+        XCTAssertEqual(aboutButton.label, about.content.buttonLabel)
 
         XCTAssertEqual(player.label, "You")
         XCTAssertEqual(Set(robots.allElementsBoundByIndex.map(\.label)), ["Robot"])
@@ -242,6 +269,108 @@ class deleksUITests: GameUITestCase {
         XCTAssertEqual(robots.count, 8)
     }
 
+    /// The box names the game, its version, who made it, where the source is and where
+    /// the game comes from; the two web addresses are links, which VoiceOver says.
+    func testAboutBoxShowsTheVersionCreditSourceAndHistory() throws {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        openAbout()
+        let content = about.content
+
+        // The game's own title stays in XCUITest's tree behind the box, so look inside it.
+        let heading = element(AccessibilityID.aboutBox).staticTexts[DisplayText.gameTitle]
+        XCTAssertTrue(heading.exists)
+        XCTAssertTrue(try traits(of: heading).contains(.header))
+        XCTAssertEqual(element(AccessibilityID.aboutVersion).label, about.version)
+        XCTAssertEqual(element(AccessibilityID.aboutCredit).label, content.credit)
+        XCTAssertEqual(
+            element(AccessibilityID.aboutLicenseSummary).label, content.licenseSummary)
+        XCTAssertEqual(element(AccessibilityID.aboutHistory).label, content.history)
+
+        // `links`, not `buttons` or `staticTexts`: each is announced as a link.
+        let creditLink = app.links[AccessibilityID.aboutCreditLink]
+        XCTAssertTrue(creditLink.exists)
+        XCTAssertEqual(creditLink.label, content.creditLink.title)
+        let sourceLink = app.links[AccessibilityID.aboutSourceLink]
+        XCTAssertTrue(sourceLink.exists)
+        XCTAssertEqual(sourceLink.label, content.sourceLink.title)
+
+        // The box is modal, so VoiceOver keeps to it and skips the game behind it.
+        // XCUITest still lists the game; it reports a modal container as an alert.
+        XCTAssertEqual(element(AccessibilityID.aboutBox).elementType, .alert)
+    }
+
+    func testAboutLicenseOpensToShowTheLicenseText() {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        openAbout()
+        let licenseText = element(AccessibilityID.aboutLicenseText)
+        XCTAssertFalse(licenseText.exists, "the license was open before it was asked for")
+
+        let licenseControl = app.buttons[AccessibilityID.aboutLicense]
+        XCTAssertTrue(licenseControl.exists)
+        XCTAssertEqual(licenseControl.label, about.content.licenseTitle)
+        licenseControl.tap()
+        XCTAssertTrue(licenseText.waitForExistence(timeout: 2))
+        XCTAssertEqual(licenseText.label, about.license)
+    }
+
+    /// The box never closes itself, and a tap on the game around it neither closes it nor
+    /// reaches the game; only Done closes it, and the game is as it was.
+    func testAboutBoxStaysUntilDoneIsTapped() throws {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let playerBefore = try playerCell()
+        let robotsBefore = robotCells()
+        // Where New game is, below the box in both looks: it would deal a new board.
+        let newGameSpot = app.buttons[AccessibilityID.newGameButton]
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // Straight up from the player, under the box: a move, were the board to take it.
+        let boardTopEdge = board.coordinate(withNormalizedOffset: CGVector(dx: 0.52, dy: 0.02))
+        let done = openAbout()
+
+        sleep(2)
+        XCTAssertTrue(done.exists)
+        XCTAssertTrue(isOnScreen(done))
+        newGameSpot.tap()
+        boardTopEdge.tap()
+        XCTAssertTrue(done.exists)
+
+        done.tap()
+        XCTAssertFalse(done.waitForExistence(timeout: 1))
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertEqual(robotCells(), robotsBefore, "a tap beside the About box dealt a new game")
+        let playerAfter = try playerCell()
+        XCTAssertEqual(playerAfter.x, playerBefore.x)
+        XCTAssertEqual(playerAfter.y, playerBefore.y, "a tap under the About box moved the player")
+    }
+
+    /// The keypad and the action letters do nothing while the box is up. Once it is
+    /// closed the same key moves the player, which shows the keys did reach the app.
+    func testKeysDoNothingWhileTheAboutBoxIsUp() throws {
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let playerBefore = try playerCell()
+        let robotsBefore = robotCells()
+        let done = openAbout()
+
+        let moveUp = "8"
+        for key in [moveUp, "t", "p"] {
+            app.typeKey(key, modifierFlags: [])
+        }
+        done.tap()
+        XCTAssertFalse(done.waitForExistence(timeout: 1))
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertEqual(robotCells(), robotsBefore, "a key pressed behind the box moved the robots")
+        let playerAfter = try playerCell()
+        XCTAssertTrue(
+            playerAfter == playerBefore, "a key pressed behind the box moved the player")
+        XCTAssertTrue(
+            app.buttons[AccessibilityID.pulseButton].isEnabled,
+            "a key pressed behind the box spent the pulse")
+
+        app.typeKey(moveUp, modifierFlags: [])
+        let playerMoved = try playerCell()
+        XCTAssertEqual(playerMoved.x, playerBefore.x)
+        XCTAssertEqual(playerMoved.y, playerBefore.y - 1, "keys did not reach the game at all")
+    }
+
     func testPulseSpendsItsCharge() {
         XCTAssertTrue(board.waitForExistence(timeout: 5))
         let pulse = app.buttons[AccessibilityID.pulseButton]
@@ -274,7 +403,8 @@ final class ModernStyleUITests: deleksUITests {
         XCTAssertTrue(board.waitForExistence(timeout: 5))
         let smallestTouchTarget: CGFloat = 44
         let newGamePill = app.buttons[AccessibilityID.newGameButton]
-        for pill in [app.switches[AccessibilityID.hintsToggle], styleToggle, newGamePill] {
+        let pills = [app.switches[AccessibilityID.hintsToggle], styleToggle, aboutButton, newGamePill]
+        for pill in pills {
             XCTAssertGreaterThanOrEqual(pill.frame.height, smallestTouchTarget)
         }
 
@@ -310,6 +440,84 @@ final class LargeTextUITests: GameUITestCase {
         // The text size reached the app at all: the legacy board shrank to make room.
         XCTAssertLessThan(legacyWidth, defaultTextWidth)
         XCTAssertGreaterThanOrEqual(boardWidth(in: .modern), legacyWidth)
+    }
+
+    /// At the largest accessibility text size the About box is taller than the screen:
+    /// its text scrolls, the end of the history can be scrolled into view, and Done stays
+    /// on screen throughout to close it.
+    func testAboutBoxScrollsAtTheLargestTextSize() {
+        for style in AppearanceStyle.allCases {
+            launch(in: style, textSize: "UICTContentSizeCategoryAccessibilityXXXL")
+            XCTAssertTrue(board.waitForExistence(timeout: 5))
+            let done = openAbout()
+            let history = element(AccessibilityID.aboutHistory)
+            let scrollView = app.scrollViews.firstMatch
+            XCTAssertTrue(scrollView.exists, "\(style): the box did not need to scroll")
+            XCTAssertTrue(isOnScreen(done), "\(style): Done was not on screen")
+
+            // The history comes last; scroll until its last line is in view.
+            func historyEndIsInView() -> Bool { history.frame.maxY <= scrollView.frame.maxY }
+            XCTAssertFalse(historyEndIsInView(), "\(style): all of it fitted without scrolling")
+            var swipes = 0
+            while !historyEndIsInView(), swipes < 12 {
+                scrollView.swipeUp()
+                swipes += 1
+            }
+            XCTAssertTrue(historyEndIsInView(), "\(style): the end of the history never came into view")
+            XCTAssertTrue(isOnScreen(done), "\(style): scrolling took Done off screen")
+            done.tap()
+            XCTAssertFalse(done.waitForExistence(timeout: 1), "\(style): Done left the box up")
+        }
+    }
+
+    /// The About button sits in the title bar beside the title. At the largest text size
+    /// the title fills most of the bar, and About must still lie wholly on screen, clear
+    /// of the title, and open the box when tapped.
+    func testAboutStaysOnScreenBesideTheTitleAtTheLargestTextSize() {
+        for style in AppearanceStyle.allCases {
+            launch(in: style, textSize: "UICTContentSizeCategoryAccessibilityXXXL")
+            XCTAssertTrue(board.waitForExistence(timeout: 5))
+            XCTAssertTrue(aboutButton.waitForExistence(timeout: 5))
+            let title = app.staticTexts[DisplayText.gameTitle].firstMatch
+            XCTAssertTrue(isOnScreen(aboutButton), "\(style): About reached off screen")
+            XCTAssertGreaterThanOrEqual(
+                aboutButton.frame.width, 44, "\(style): About was narrower than a touch target")
+            XCTAssertLessThanOrEqual(
+                aboutButton.frame.maxX, title.frame.minX, "\(style): About overlapped the title")
+            XCTAssertLessThan(
+                aboutButton.frame.maxY, board.frame.minY, "\(style): About was not above the board")
+            openAbout().tap()
+        }
+    }
+
+    /// About is drawn smaller than a fingertip in the title bar, so it takes touches over a
+    /// full touch target, which is the frame it reports. A tap near that frame's top
+    /// leading corner, on the stripes or the padding outside the drawn button, opens the
+    /// box. The system also accepts taps a little outside any button, so the tap alone
+    /// would pass without the target; the frame's size is what checks it.
+    func testAboutTakesTouchesAcrossAFullTouchTarget() {
+        let smallestTouchTarget: CGFloat = 44
+        let cases: [(AppearanceStyle, String?)] = [
+            (.legacy, nil), (.legacy, "UICTContentSizeCategoryAccessibilityXXXL"),
+            (.modern, "UICTContentSizeCategoryAccessibilityXXXL"),
+        ]
+        for (style, textSize) in cases {
+            launch(in: style, textSize: textSize)
+            XCTAssertTrue(aboutButton.waitForExistence(timeout: 5))
+            let frame = aboutButton.frame
+            let place = "\(style) at \(textSize ?? "the default text size")"
+            // Frames come back with floating-point error far under a pixel.
+            let roundingAllowance: CGFloat = 0.01
+            XCTAssertGreaterThanOrEqual(frame.width, smallestTouchTarget - roundingAllowance, place)
+            XCTAssertGreaterThanOrEqual(frame.height, smallestTouchTarget - roundingAllowance, place)
+            // Two points in from the target's leading edge and its top edge.
+            let corner = CGVector(dx: frame.minX + 2, dy: frame.minY + 2)
+            app.coordinate(withNormalizedOffset: .zero).withOffset(corner).tap()
+            XCTAssertTrue(
+                aboutDone.waitForExistence(timeout: 5),
+                "\(place): a tap at \(corner), inside About's touch target, did nothing")
+            aboutDone.tap()
+        }
     }
 
     /// At this size the modern pills wrap onto more than one row. Each takes touches
