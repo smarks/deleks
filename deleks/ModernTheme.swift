@@ -24,21 +24,15 @@ struct ModernTheme: Theme {
                 startPoint: .top, endPoint: .bottom))
     }
 
-    func titleBar(title: AnyView) -> AnyView {
+    func titleBar(title: AnyView, accessory: AnyView) -> AnyView {
         AnyView(
-            HStack(spacing: 8) {
-                ModernRobotGlyph()
-                    .frame(
-                        width: ModernMetrics.titleMascotSize,
-                        height: ModernMetrics.titleMascotSize)
-                title
-                    .font(.title2.weight(.heavy))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [ModernPalette.titleStart.color, ModernPalette.titleEnd.color],
-                            startPoint: .leading, endPoint: .trailing))
-            }
-            .frame(maxWidth: .infinity))
+            TitleBarWithLeadingAccessory(accessory: accessory, gap: ModernMetrics.accessoryGap) {
+                titleWidth, titleShift in
+                ModernMascotTitle(title: title)
+                    .reportingWidth(to: titleWidth)
+                    .offset(x: titleShift)
+                    .frame(maxWidth: .infinity)
+            })
     }
 
     func scoreboard(stats: [AnyView]) -> AnyView {
@@ -150,14 +144,8 @@ struct ModernTheme: Theme {
         title: LocalizedStringKey, action: @escaping () -> Void
     ) -> AnyView {
         AnyView(
-            Button(action: action) {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.counterclockwise").accessibilityHidden(true)
-                    Text(title)
-                }
-            }
-            .buttonStyle(ModernPillStyle(fill: nil, text: ModernPalette.accentText))
-            .modernControlTextSize { Text(title) })
+            ModernPillButton(
+                title: Text(title), systemImage: "arrow.counterclockwise", action: action))
     }
 
     /// Cleared: a green trophy badge, green heading and green button. Caught: the robot
@@ -165,9 +153,7 @@ struct ModernTheme: Theme {
     func resultCard(
         outcome: LevelOutcome, heading: AnyView, detail: AnyView, actionButton: AnyView
     ) -> AnyView {
-        let cardShape = RoundedRectangle(
-            cornerRadius: ModernMetrics.largeCardCorner, style: .continuous)
-        return AnyView(
+        AnyView(
             VStack(spacing: 10) {
                 ModernOutcomeBadge(outcome: outcome)
                 heading
@@ -182,12 +168,7 @@ struct ModernTheme: Theme {
             .multilineTextAlignment(.center)
             .padding(.horizontal, 26)
             .padding(.vertical, 20)
-            .background(
-                cardShape
-                    .fill(ModernPalette.surface.color)
-                    .shadow(color: ModernPalette.shadow.color.opacity(0.28), radius: 18, y: 8)
-            )
-            .overlay(cardShape.strokeBorder(outcome.modernGradient, lineWidth: 2))
+            .modernFloatingCard(border: outcome.modernGradient, lineWidth: 2)
             .transition(motion.cardTransition))
     }
 
@@ -196,14 +177,111 @@ struct ModernTheme: Theme {
     ) -> AnyView {
         AnyView(
             Button(action: action) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(ModernPalette.onColor.color)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 11)
-                    .background(Capsule().fill(outcome.modernGradient))
+                ModernFilledButtonLabel(title: Text(title), fill: outcome.modernGradient)
             }
             .buttonStyle(ModernPressStyle()))
+    }
+
+    /// A pill like New game, with an information symbol; where the title bar has too little
+    /// room for the pill, its title alone in the accent, shrunk to fit.
+    func aboutButton(title: String, action: @escaping () -> Void) -> AnyView {
+        AnyView(
+            ViewThatFits(in: .horizontal) {
+                ModernPillButton(
+                    title: Text(verbatim: title), systemImage: "info.circle", action: action)
+                Button(action: action) {
+                    Text(verbatim: title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(ModernPalette.accentText.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(ModernMetrics.smallestTextScale)
+                        .frame(
+                            minWidth: ModernMetrics.minimumTouchTarget,
+                            minHeight: ModernMetrics.minimumTouchTarget, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(ModernPressStyle())
+                .modernControlTextSize { Text(verbatim: title) }
+            })
+    }
+
+    func aboutScrim() -> AnyView {
+        AnyView(ModernPalette.shadow.color.opacity(ModernMetrics.scrimOpacity))
+    }
+
+    /// A white rounded card, dark in dark mode, headed by the title as it is on the main
+    /// screen. It arrives and leaves the way a result card does.
+    func aboutBox(
+        heading: AnyView, version: AnyView, sections: [AnyView], doneButton: AnyView
+    ) -> AnyView {
+        AnyView(
+            VStack(spacing: 12) {
+                VStack(spacing: 2) {
+                    ModernMascotTitle(title: heading)
+                    version
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(ModernPalette.textSecondary.color)
+                }
+                .multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(sections.indices, id: \.self) { index in
+                        if index > 0 {
+                            Divider().overlay(ModernPalette.surfaceStroke.color)
+                                .accessibilityHidden(true)
+                        }
+                        sections[index]
+                    }
+                }
+                .font(.subheadline)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .scrollingWhenTaller()
+                doneButton
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 20)
+            .modernFloatingCard(border: ModernPalette.surfaceStroke.color, lineWidth: 1)
+            .transition(motion.cardTransition))
+    }
+
+    /// Filled with the accent, like the Modern look pill when it is on.
+    func aboutDoneButton(title: String, action: @escaping () -> Void) -> AnyView {
+        AnyView(
+            Button(action: action) {
+                ModernFilledButtonLabel(
+                    title: Text(verbatim: title), fill: ModernPalette.accentFill.color)
+                    .frame(minHeight: ModernMetrics.minimumTouchTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(ModernPressStyle()))
+    }
+
+    func aboutLink(title: String, destination: URL) -> AnyView {
+        AnyView(
+            Link(destination: destination) {
+                Text(verbatim: title)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(ModernPalette.accentText.color)
+                    .multilineTextAlignment(.leading)
+            })
+    }
+
+    /// The label and its chevron in the accent, like the links: it is a control.
+    func aboutDisclosure(
+        label: AnyView, isExpanded: Binding<Bool>, content: AnyView
+    ) -> AnyView {
+        AnyView(
+            DisclosureGroup(isExpanded: isExpanded) {
+                content
+                    .font(.caption)
+                    .foregroundStyle(ModernPalette.textSecondary.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 6)
+            } label: {
+                label.fontWeight(.semibold)
+            }
+            .foregroundStyle(ModernPalette.accentText.color)
+            .tint(ModernPalette.accentText.color))
     }
 }
 
@@ -218,6 +296,10 @@ private enum ModernMetrics {
     static let smallCardCorner: CGFloat = 14
     static let largeCardCorner: CGFloat = 24
     static let titleMascotSize: CGFloat = 28
+    /// The space between the title bar's accessory and the mascot.
+    static let accessoryGap: CGFloat = 8
+    /// How strongly the screen darkens behind the About box.
+    static let scrimOpacity = 0.35
 
     /// One-line text in a fixed-width card shrinks to this share of its size, and no
     /// further, before it would have to lose letters.
@@ -231,7 +313,7 @@ private enum ModernMetrics {
     static let largestTextSizeWithStatIcons = DynamicTypeSize.large
 
     /// The smallest target a finger can be asked to hit.
-    static let minimumTouchTarget: CGFloat = 44
+    static let minimumTouchTarget = TouchTarget.smallest
     static let pillMinimumHeight: CGFloat = 32
     /// How far above and below its outline a pill takes touches.
     static let pillTouchMargin = (minimumTouchTarget - pillMinimumHeight) / 2
@@ -347,6 +429,21 @@ extension View {
             .accessibilityShowsLargeContentViewer(enlarged)
     }
 
+    /// A card that floats over the game, as the result card and the About box do: the
+    /// surface colour with a deep shadow, edged with `border`.
+    fileprivate func modernFloatingCard(
+        border: some ShapeStyle, lineWidth: CGFloat
+    ) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: ModernMetrics.largeCardCorner, style: .continuous)
+        return background(
+            shape
+                .fill(ModernPalette.surface.color)
+                .shadow(color: ModernPalette.shadow.color.opacity(0.28), radius: 18, y: 8)
+        )
+        .overlay(shape.strokeBorder(border, lineWidth: lineWidth))
+    }
+
     /// A raised card: the surface colour, a hairline edge and a soft shadow.
     fileprivate func modernCard(cornerRadius: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -356,6 +453,27 @@ extension View {
                 .shadow(color: ModernPalette.shadow.color.opacity(0.10), radius: 6, y: 3)
         )
         .overlay(shape.strokeBorder(ModernPalette.surfaceStroke.color, lineWidth: 1))
+    }
+}
+
+/// The game's name in its gradient, after the robot mascot: the title of the screen and
+/// of the About box.
+private struct ModernMascotTitle: View {
+    let title: AnyView
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ModernRobotGlyph()
+                .frame(
+                    width: ModernMetrics.titleMascotSize,
+                    height: ModernMetrics.titleMascotSize)
+            title
+                .font(.title2.weight(.heavy))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [ModernPalette.titleStart.color, ModernPalette.titleEnd.color],
+                        startPoint: .leading, endPoint: .trailing))
+        }
     }
 }
 
@@ -509,6 +627,39 @@ private struct ModernOutcomeBadge: View {
 }
 
 // MARK: - Button styles
+
+/// A lesser button of the settings row: an outlined pill with a symbol before its title.
+private struct ModernPillButton: View {
+    let title: Text
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: systemImage).accessibilityHidden(true)
+                title
+            }
+        }
+        .buttonStyle(ModernPillStyle(fill: nil, text: ModernPalette.accentText))
+        .modernControlTextSize { title }
+    }
+}
+
+/// The title of a button filled with colour: white on a capsule of `fill`.
+private struct ModernFilledButtonLabel<Fill: ShapeStyle>: View {
+    let title: Text
+    let fill: Fill
+
+    var body: some View {
+        title
+            .font(.headline)
+            .foregroundStyle(ModernPalette.onColor.color)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 11)
+            .background(Capsule().fill(fill))
+    }
+}
 
 /// A press dims the button. Nothing moves, so there is nothing for Reduce Motion to stop.
 private struct ModernPressStyle: ButtonStyle {

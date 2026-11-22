@@ -17,8 +17,17 @@ struct LegacyTheme: Theme {
         AnyView(palette.paper)
     }
 
-    func titleBar(title: AnyView) -> AnyView {
-        AnyView(LegacyTitleBar(title: title, palette: palette))
+    /// The accessory sits on the stripes a little in from the left end, where a classic
+    /// window kept its close box.
+    func titleBar(title: AnyView, accessory: AnyView) -> AnyView {
+        AnyView(
+            TitleBarWithLeadingAccessory(
+                accessory: accessory,
+                gap: LegacyMetrics.accessoryGap
+            ) { titleWidth, titleShift in
+                LegacyTitleBar(
+                    title: title, palette: palette, titleWidth: titleWidth, titleShift: titleShift)
+            })
     }
 
     func scoreboard(stats: [AnyView]) -> AnyView {
@@ -91,8 +100,7 @@ struct LegacyTheme: Theme {
         AnyView(
             Toggle(title, isOn: isOn)
                 .toggleStyle(.button)
-                .font(.caption)
-                .tint(palette.ink))
+                .legacySmallItem(palette))
     }
 
     func secondaryButton(
@@ -100,8 +108,7 @@ struct LegacyTheme: Theme {
     ) -> AnyView {
         AnyView(
             Button(title, action: action)
-                .font(.caption)
-                .tint(palette.ink))
+                .legacySmallItem(palette))
     }
 
     /// The legacy card looks the same whether the level was cleared or lost.
@@ -115,9 +122,7 @@ struct LegacyTheme: Theme {
                 actionButton
             }
             .padding(20)
-            .background(palette.paper)
-            .overlay(Rectangle().stroke(palette.ink, lineWidth: 2))
-            .background(Rectangle().fill(palette.ink).offset(x: 4, y: 4)))
+            .legacyWindowFrame(palette))
     }
 
     func resultActionButton(
@@ -125,13 +130,155 @@ struct LegacyTheme: Theme {
     ) -> AnyView {
         AnyView(
             Button(action: action) {
-                Text(title)
-                    .font(.headline)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(palette.ink, lineWidth: 2))
+                LegacyPushButtonLabel(title: Text(title), palette: palette)
             }
             .buttonStyle(.plain))
+    }
+
+    /// A plain menu-style item in the text of New game, as an About item always was, on a
+    /// patch of paper cleared from the title bar's stripes. It stops growing at the size
+    /// that still fits the bar's height, shows its title in the large content viewer
+    /// beyond that, and shrinks its title to fit a narrow room.
+    func aboutButton(title: String, action: @escaping () -> Void) -> AnyView {
+        AnyView(
+            Button(action: action) {
+                Text(verbatim: title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(LegacyMetrics.smallestTextScale)
+                    .padding(.horizontal, 4)
+                    .frame(maxHeight: .infinity)
+                    .background(palette.paper)
+                    .padding(.leading, LegacyMetrics.accessoryInset)
+                    // Takes touches on the stripes around the patch, up to a full touch
+                    // target across and down, without taking any more room.
+                    .frame(minWidth: TouchTarget.smallest, alignment: .leading)
+                    .padding(.vertical, LegacyMetrics.titleBarTouchMargin)
+                    .contentShape(Rectangle())
+                    .padding(.vertical, -LegacyMetrics.titleBarTouchMargin)
+            }
+            .buttonStyle(.plain)
+            .legacySmallItem(palette)
+            .dynamicTypeSize(...LegacyMetrics.largestAboutButtonTextSize)
+            .accessibilityShowsLargeContentViewer { Text(verbatim: title) })
+    }
+
+    /// The game under the box fades toward the paper, as an inactive window did.
+    func aboutScrim() -> AnyView {
+        AnyView(palette.paper.opacity(0.75))
+    }
+
+    /// A small window: a striped title bar carrying the name, a square frame with a drop
+    /// shadow, and the default button at the bottom.
+    func aboutBox(
+        heading: AnyView, version: AnyView, sections: [AnyView], doneButton: AnyView
+    ) -> AnyView {
+        AnyView(
+            VStack(spacing: 0) {
+                LegacyTitleBar(title: heading, palette: palette, growsWithTitle: true)
+                    .padding([.horizontal, .top], 6)
+                VStack(alignment: .leading, spacing: 12) {
+                    version
+                    ForEach(sections.indices, id: \.self) { index in
+                        Rectangle().fill(palette.ink).frame(height: 1)
+                            .accessibilityHidden(true)
+                        sections[index]
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .scrollingWhenTaller()
+                doneButton
+                    .padding(.bottom, 14)
+            }
+            .font(.footnote)
+            .legacyWindowFrame(palette))
+    }
+
+    /// The default button of a classic dialog: an outlined button inside a heavier ring.
+    func aboutDoneButton(title: String, action: @escaping () -> Void) -> AnyView {
+        AnyView(
+            Button(action: action) {
+                LegacyPushButtonLabel(title: Text(verbatim: title), palette: palette)
+                    .padding(4)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(palette.ink, lineWidth: 3))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain))
+    }
+
+    /// Underlined, since one-bit ink has no colour to mark a link with.
+    func aboutLink(title: String, destination: URL) -> AnyView {
+        AnyView(
+            Link(destination: destination) {
+                Text(verbatim: title)
+                    .underline()
+                    .foregroundStyle(palette.ink)
+                    .multilineTextAlignment(.leading)
+            })
+    }
+
+    func aboutDisclosure(
+        label: AnyView, isExpanded: Binding<Bool>, content: AnyView
+    ) -> AnyView {
+        AnyView(
+            DisclosureGroup(isExpanded: isExpanded) {
+                content
+                    .font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 6)
+            } label: {
+                label.bold()
+            }
+            .tint(palette.ink))
+    }
+}
+
+extension View {
+    /// The small items of the settings row and the title bar: caption text in ink.
+    fileprivate func legacySmallItem(_ palette: OneBitPalette) -> some View {
+        font(.caption).tint(palette.ink)
+    }
+
+    /// A window or card on paper: a square ink frame with a drop shadow below and right.
+    fileprivate func legacyWindowFrame(_ palette: OneBitPalette) -> some View {
+        background(palette.paper)
+            .overlay(Rectangle().stroke(palette.ink, lineWidth: 2))
+            .background(Rectangle().fill(palette.ink).offset(x: 4, y: 4))
+    }
+}
+
+private enum LegacyMetrics {
+    /// The corner of every outlined button.
+    static let buttonCorner: CGFloat = 6
+    /// The height of the striped title bar on the main screen.
+    static let titleBarHeight: CGFloat = 22
+    /// The About button's text grows no larger than this, the largest that fits the
+    /// title bar's height.
+    static let largestAboutButtonTextSize = DynamicTypeSize.xxxLarge
+    /// One-line text that does not fit its room shrinks to this share of its size.
+    static let smallestTextScale: CGFloat = 0.5
+    /// How far above and below the title bar its accessory takes touches: a full touch
+    /// target, reaching into the padding above the bar and the gap below it.
+    static let titleBarTouchMargin = (TouchTarget.smallest - titleBarHeight) / 2
+    /// Stripes left showing between the bar's left end and its accessory.
+    static let accessoryInset: CGFloat = 8
+    /// Stripes left showing between the accessory and the title.
+    static let accessoryGap: CGFloat = 8
+}
+
+/// The title of a push button in a card or box, in a rounded ink outline.
+private struct LegacyPushButtonLabel: View {
+    let title: Text
+    let palette: OneBitPalette
+
+    var body: some View {
+        title
+            .font(.headline)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: LegacyMetrics.buttonCorner)
+                    .stroke(palette.ink, lineWidth: 2))
     }
 }
 
@@ -139,8 +286,25 @@ struct LegacyTheme: Theme {
 private struct LegacyTitleBar: View {
     let title: AnyView
     let palette: OneBitPalette
+    /// The main screen's bar is always `titleBarHeight` tall. The About box's grows with
+    /// a title set in a large text size, so the title stays inside its box.
+    var growsWithTitle = false
+    /// Where the bar reports the width of its title on its paper, for an accessory.
+    var titleWidth: Binding<CGFloat?> = .constant(nil)
+    /// How far right of centre the title is drawn, to leave an accessory room to touch.
+    var titleShift: CGFloat = 0
+    private let height = LegacyMetrics.titleBarHeight
 
+    @ViewBuilder
     var body: some View {
+        if growsWithTitle {
+            bar.frame(minHeight: height)
+        } else {
+            bar.frame(height: height)
+        }
+    }
+
+    private var bar: some View {
         ZStack {
             VStack(spacing: 2) {
                 ForEach(0..<6, id: \.self) { _ in
@@ -151,8 +315,9 @@ private struct LegacyTitleBar: View {
                 .font(.headline.weight(.bold))
                 .padding(.horizontal, 10)
                 .background(palette.paper)
+                .reportingWidth(to: titleWidth)
+                .offset(x: titleShift)
         }
-        .frame(height: 22)
     }
 }
 
@@ -196,9 +361,12 @@ private struct RetroButton: View {
             }
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(palette.paper)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(palette.ink, lineWidth: 2))
+            .overlay(
+                RoundedRectangle(cornerRadius: LegacyMetrics.buttonCorner)
+                    .stroke(palette.ink, lineWidth: 2))
             .background(
-                RoundedRectangle(cornerRadius: 6).fill(palette.ink).offset(x: 2, y: 2))
+                RoundedRectangle(cornerRadius: LegacyMetrics.buttonCorner)
+                    .fill(palette.ink).offset(x: 2, y: 2))
             .opacity(isEnabled ? 1 : 0.35)
         }
         .buttonStyle(.plain)

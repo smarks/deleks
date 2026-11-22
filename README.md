@@ -16,6 +16,9 @@ and a modern, colorful one.
 - **Safe-move hints** ring the squares no robot can reach next turn.
 - **Modern look** switches between the one-bit look and the modern one, which follows the
   system's light or dark mode. The game itself is the same in both.
+- **About…**, at the left of the title bar, shows the version, who made the game, its
+  license and source, and a little of the history of robot-chase games. It stays up until
+  you tap Done.
 
 On a hardware keyboard, the numeric keypad moves (7 8 9 / 4 5 6 / 1 2 3, with 5 to wait),
 and T, P and L trigger the three actions.
@@ -26,7 +29,8 @@ and T, P and L trigger the three actions.
 |------|------------|
 | `deleksCore/` | The game engine as a Swift package: pure value types, no UI, seeded randomness. |
 | `deleks/` | The SwiftUI app. Each look is a `Theme` (`LegacyTheme.swift`, `ModernTheme.swift`); the views ask the current theme how to draw. |
-| `Shared/` | Accessibility identifiers, launch arguments and storage keys compiled into both the app and the UI tests. |
+| `Shared/` | Accessibility identifiers, launch arguments and storage keys compiled into both the app and the UI tests, and the About box's wording (`About.json`), bundled into both. |
+| `LICENSE` | The MIT License. Bundled into the app, which shows it in the About box. |
 | `deleksUITests/` | UI tests that drive the app with a fixed seed (`-deleksSeed 42`), in both looks. |
 | `tools/icon/DrawIcon.swift` | Renders the app icon: `swift tools/icon/DrawIcon.swift deleks/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. |
 | `tools/upload_testflight.sh` | Archives a clean `main` and uploads it to TestFlight; the build number is main's commit count. |

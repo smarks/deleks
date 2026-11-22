@@ -1,0 +1,18 @@
+{
+  "buttonTitle": "About…",
+  "buttonLabel": "About deleks",
+  "versionFormat": "Version {version} ({build})",
+  "credit": "Made by Spencer Marks · Origami Software",
+  "creditLink": {
+    "title": "origamisoftware.com",
+    "url": "https://origamisoftware.com"
+  },
+  "licenseSummary": "Open source under the MIT License",
+  "licenseTitle": "License",
+  "sourceLink": {
+    "title": "Source code: github.com/smarks/deleks",
+    "url": "https://github.com/smarks/deleks"
+  },
+  "history": "Games where you escape a crowd of robots by tricking them into crashing into each other are among the oldest computer games. The idea seems to have started at a college computer center in the early 1970s; nobody knows who wrote the first one. A version called Chase was printed in a computer magazine in 1976, and type-in copies spread through the home-computer magazines that followed. In the 1980s the game came with the operating systems of university workstations and reached the first desktop computers with a mouse, where small versions became a favorite way to pass a few minutes between real work. deleks is a new version of that old game, written for phones and tablets.",
+  "doneTitle": "Done"
+}

@@ -6,13 +6,15 @@ struct ContentView: View {
     @AppStorage(StorageKey.showHints) private var showHints = false
     @AppStorage(StorageKey.appearanceStyle) private var style: AppearanceStyle = .initial
     @FocusState private var boardFocused: Bool
+    @State private var showsAbout = false
 
     var body: some View {
         let theme = style.theme
         VStack(spacing: 12) {
             theme.titleBar(
                 title: AnyView(
-                    Text(verbatim: DisplayText.gameTitle).accessibilityAddTraits(.isHeader)))
+                    Text(verbatim: DisplayText.gameTitle).accessibilityAddTraits(.isHeader)),
+                accessory: AnyView(aboutButton))
             Scoreboard(game: model.game, highScore: model.highScore)
 
             BoardView(game: model.game, showHints: showHints, onTap: model.tap(cell:), onMove: model.move)
@@ -31,6 +33,21 @@ struct ContentView: View {
         // only the height of the content.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(theme.screenBackground().ignoresSafeArea().accessibilityHidden(true))
+        .overlay {
+            if showsAbout {
+                // Takes every touch, so the game cannot be played under the box.
+                theme.aboutScrim()
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .accessibilityHidden(true)
+            }
+        }
+        .overlay {
+            if showsAbout {
+                AboutBox(details: .app) { showsAbout = false }
+            }
+        }
+        .animation(theme.turnAnimation, value: showsAbout)
         .fontDesign(theme.fontDesign)
         .foregroundStyle(theme.textStyle)
         .environment(\.theme, theme)
@@ -41,6 +58,15 @@ struct ContentView: View {
         .focusEffectDisabled()
         .onKeyPress(action: handleKey)
         .onAppear { boardFocused = true }
+    }
+
+    /// In the title bar, beside the title: a place the game's own layout never needs, so
+    /// the button cannot take room from the board or the settings at any size.
+    private var aboutButton: some View {
+        let content = AboutDetails.app.content
+        return style.theme.aboutButton(title: content.buttonTitle) { showsAbout = true }
+            .accessibilityLabel(Text(verbatim: content.buttonLabel))
+            .accessibilityIdentifier(AccessibilityID.aboutButton)
     }
 
     @ViewBuilder
@@ -68,6 +94,7 @@ struct ContentView: View {
     /// Numeric keypad layout (7 8 9 / 4 5 6 / 1 2 3) for hardware keyboards,
     /// plus T, P and L for the three actions.
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
+        guard !showsAbout else { return .ignored }
         let keypad: [Character: Direction] = [
             "7": .northWest, "8": .north, "9": .northEast,
             "4": .west, "5": .stay, "6": .east,
