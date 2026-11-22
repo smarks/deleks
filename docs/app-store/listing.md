@@ -66,15 +66,17 @@ stores only its own settings on the device (see `PRIVACY.md`).
 
 ## Screenshots
 
-App Store Connect needs two sets for an app that runs on iPhone and iPad: iPhone 6.9"
-(1320 × 2868) and iPad 13" (2064 × 2752). The `deleksStoreScreenshots` scheme takes both,
+App Store Connect needs two sets for an app that runs on iPhone and iPad. Its main iPhone
+slot, "iPhone with Dynamic Island (medium display)", takes 6.3" shots (1206 × 2622, from an
+iPhone 18 Pro simulator); iPad takes 13" (2064 × 2752). A 6.9" set (1320 × 2868, from an
+iPhone Pro Max simulator) is kept as well. The `deleksStoreScreenshots` scheme takes all three,
 playing seed 42 so the boards repeat. For each look it saves the opening board, a game in
 progress with scrap heaps, a cleared level and the About box. The sets are in
-`docs/app-store/screenshots/iphone-6.9/` and `docs/app-store/screenshots/ipad-13/`; upload
+`docs/app-store/screenshots/iphone-6.3/`, `iphone-6.9/` and `ipad-13/`; upload
 them in file-name order.
 
-To retake them, on an iPhone Pro Max and an iPad Pro 13-inch simulator set to English, each
-with the app freshly installed. On iPad the run first switches the simulator's Multitasking
+To retake them, use an iPhone 18 Pro, an iPhone Pro Max and an iPad Pro 13-inch simulator,
+each set to English with the app freshly installed. On iPad the run first switches the simulator's Multitasking
 setting to Full Screen Apps and leaves it there; the iPad status bar keeps showing the
 simulator's real date beside 9:41.
 
