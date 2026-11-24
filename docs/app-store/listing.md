@@ -61,7 +61,11 @@ stores only its own settings on the device (see `PRIVACY.md`).
 ## App Review
 
 - Sign-in required: no.
-- Notes: "No account or network access. Tap a square to move; the About button shows the license and source."
+- Notes: the text in `review-notes.txt`, pasted as is. App Review rejected 1.0 on 2026-11-23 under
+  Guideline 2.1 (Information Needed) and asked for this information in the Notes field for every
+  future submission: purpose and audience, how to use the app, external services, regional
+  differences, and regulated or third-party material. It also asked for a screen recording made
+  on a physical device, starting at launch, sent with the reply.
 - Contact (first name, last name, phone, email): entered by Spencer in App Store Connect.
 
 ## Screenshots

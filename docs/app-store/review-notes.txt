@@ -1,0 +1,20 @@
+Purpose and audience
+Deleks is a single-player, turn-based puzzle game for anyone who likes short logic games, from older children to adults. Robots move one square toward you each turn; you survive by stepping, teleporting or pulsing so that robots collide with each other and with the scrap heaps they leave. A level takes a minute or two. The app needs no account or connection and has no ads or tracking.
+
+How to use it
+No setup or login is needed. Launch the app and a game starts.
+- Tap anywhere on the board and your piece steps one square toward that spot, diagonals included; tap your own piece to wait a turn. On a hardware keyboard, the keys 1-9 move as on a numeric keypad (5 waits), and T, P and L work the Teleport, Pulse and Last stand buttons.
+- Teleport (below the board) jumps to a random empty square.
+- Pulse (shown as "Pulse ×" and the number left) scraps every robot next to you. You start with one, gain one each level, and unused pulses carry over.
+- Last stand keeps you in place, turn after turn, until the level is cleared or you are caught. Robots scrapped during it score double points.
+- Clearing every robot shows "Level N cleared" with a "Next level" button. Being caught shows "Caught!" with a "New game" button.
+- The "Safe-move hints" and "Modern look" switches are below the board. "About…" in the title bar shows the version, the license, a link to the source code and a short history of the genre.
+
+External services
+None. The app makes no network connections and uses no third-party SDKs, analytics, authentication, payment or AI services; all of its code runs on the device. The only outside links are two in the About box (origamisoftware.com and the GitHub source page), which open in Safari.
+
+Regional differences
+None. The app works the same in every region.
+
+Regulated industry or third-party material
+Not applicable. The app is not in a regulated industry, and its code and artwork are original, apart from Apple's SF Symbols. The source is published under the MIT License at https://github.com/smarks/deleks.
